@@ -165,7 +165,7 @@ Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazi
 
 <b>ATTENZIONE!!!</b> GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO<br><br>
 
-Rag. Silvio Calcagni - 335/6145323 &nbsp;&nbsp;&nbsp; Luigi Calcagni - 3209364267
+Enrico Procaccini - 3892159094 &nbsp;&nbsp;&nbsp;
 <br>
 <br>
 <br>
@@ -175,15 +175,15 @@ Rag. Silvio Calcagni - 335/6145323 &nbsp;&nbsp;&nbsp; Luigi Calcagni - 320936426
 <p><b>Long Life Consulting</b></p>
 
 <p>
-Luigi Calcagni<br>
+Enrico Procaccini<br>
 <br>
 Corso Italia, 46 – 80011 Acerra (NA)
 </p>
 
 <p>
-Mob: 3209364267<br>
+Mob: 3892159094<br>
 <br>
-Info: info@longlifecons.com
+Info: eprocaccini@longlifecons.com
 </p>
 <br>
 <br>
@@ -233,14 +233,14 @@ Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una val
 Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.
 
 ATTENZIONE!!! GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO
-Rag. Silvio Calcagni -335/6145323                 Luigi Calcagni - 3209364267
+Enrico Procaccini - 3892159094                
 
 Cordiali saluti
 Long Life Consulting
-Luigi Calcagni
+Enrico Procaccini
 Corso Italia, 46 – 80011 Acerra (NA)
-Mob: 3209364267
-Info : info@longlifecons.com
+Mob: 3892159094
+Info : eprocaccini@longlifecons.com
 Wholeses Fuels - Fuel Cards - Coupons
 Agente di TAMOIL ITALIA S.P.A
 """
