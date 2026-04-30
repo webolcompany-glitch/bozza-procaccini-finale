@@ -4,9 +4,21 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client
 
+def prossimo_giorno_lavorativo(data=None):
+    if data is None:
+        data = datetime.now()
+
+    giorno = data + timedelta(days=1)
+
+    # 5 = sabato, 6 = domenica
+    while giorno.weekday() >= 5:
+        giorno += timedelta(days=1)
+
+    return giorno
+    
 supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_KEY"]
@@ -32,7 +44,10 @@ PASSWORD_APP = st.secrets["PASSWORD_APP"]
 
 def invia_email(destinatari, prezzo, template, nome=""):
     try:
-        data = datetime.now().strftime("%d/%m/%Y")
+        data_invio = datetime.now()
+        data_scarico = prossimo_giorno_lavorativo(data_invio)
+
+        data = data_scarico.strftime("%d/%m/%Y")
 
         testo = template \
             .replace("{prezzo}", f"{prezzo:.3f}") \
@@ -40,7 +55,7 @@ def invia_email(destinatari, prezzo, template, nome=""):
             .replace("{data}", data)
 
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"OFFERTA CARBURANTE - {data}"
+        msg["Subject"] = f"OFFERTA CARBURANTE - PREZZI VALIDI PER {data}"
         msg["From"] = EMAIL_MITTENTE
 
         # 👉 lista email
@@ -387,7 +402,8 @@ if st.session_state.page == "dashboard":
             import urllib.parse
 
             tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
-            data = datetime.now().strftime("%d/%m/%Y")
+            data_scarico = prossimo_giorno_lavorativo()
+            data = data_scarico.strftime("%d/%m/%Y")
 
             msg = st.session_state.wa_template \
                 .replace("{prezzo}", format_euro(prezzo)) \
