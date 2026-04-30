@@ -11,6 +11,7 @@ supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_KEY"]
 )
+
 st.set_page_config(page_title="Fuel SaaS", layout="wide")
 
 # =========================
@@ -119,7 +120,6 @@ def load_data():
     return df
 
 def save_data(df):
-
     records = df.rename(columns={
         "ID":"id",
         "Nome":"nome",
@@ -151,13 +151,103 @@ if "prezzo_base" not in st.session_state:
 
 if "email_template" not in st.session_state:
     st.session_state.email_template = """<div style="font-family: Serif, Arial, sans-serif; font-size:14px; line-height:1.5; color:#000000;">
-...
+
+Gentile cliente,<br><br>
+
+con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata in oggetto.<br><br>
+
+<b>Gasolio per autotrazione = {prezzo}/litro + Iva</b><br><br>
+
+Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.<br><br>
+
+Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.<br><br>
+
+<b>ATTENZIONE!!!</b> GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO<br><br>
+
+Enrico Procaccini - 3892159094<br><br>
+
+<div style="font-family: Verdana; font-size:11px; color:#2F5496;">
+<b>Long Life Consulting</b><br>
+Enrico Procaccini<br>
+Corso Italia, 46 – 80011 Acerra (NA)<br>
+Mob: 3892159094<br>
+Info: eprocaccini@longlifecons.com
+</div>
+
 </div>
 """
 
 if "wa_template" not in st.session_state:
     st.session_state.wa_template = """Gentile cliente {nome},
-...
+
+Data: {data}
+
+Gasolio = {prezzo}/litro + IVA
+
+Long Life Consulting
+Enrico Procaccini
 """
 
 df = st.session_state.clienti
+
+# =========================
+# NAV
+# =========================
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    if st.button("📊 Dashboard", use_container_width=True):
+        st.session_state.page = "dashboard"
+
+with c2:
+    if st.button("👤 Clienti", use_container_width=True):
+        st.session_state.page = "clienti"
+
+with c3:
+    if st.button("➕ Nuovo", use_container_width=True):
+        st.session_state.page = "cliente"
+
+st.divider()
+
+# =========================
+# CARD
+# =========================
+def card(title, value):
+    return f"""
+    <div style="padding:14px;border-radius:14px;background:#111827;
+    color:white;text-align:center;margin:6px 0;">
+        <div style="font-size:12px;opacity:0.7;">{title}</div>
+        <div style="font-size:20px;font-weight:600">{value}</div>
+    </div>
+    """
+
+# =========================
+# DASHBOARD
+# =========================
+if st.session_state.page == "dashboard":
+    st.markdown("## ⛽ Dashboard")
+
+    prezzo_base = st.number_input(
+        "Prezzo base",
+        value=float(st.session_state.prezzo_base),
+        step=0.001,
+        format="%.3f"
+    )
+
+    st.session_state.prezzo_base = prezzo_base
+
+    st.info("Dashboard caricata correttamente")
+
+# =========================
+# CLIENTI
+# =========================
+elif st.session_state.page == "clienti":
+    st.markdown("## Clienti")
+    st.dataframe(df)
+
+# =========================
+# CLIENTE
+# =========================
+elif st.session_state.page == "cliente":
+    st.markdown("## Nuovo Cliente")
+    st.text_input("Nome")
