@@ -4,8 +4,29 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client
+
+def data_operativa():
+    oggi = datetime.now()
+
+    if oggi.weekday() == 4:  # venerdì
+        prossima = oggi + timedelta(days=3)
+    elif oggi.weekday() == 5:  # sabato
+        prossima = oggi + timedelta(days=2)
+    elif oggi.weekday() == 6:  # domenica
+        prossima = oggi + timedelta(days=1)
+    else:
+        prossima = oggi + timedelta(days=1)
+
+    giorni = [
+        "Lunedì", "Martedì", "Mercoledì",
+        "Giovedì", "Venerdì", "Sabato", "Domenica"
+    ]
+
+    giorno_nome = giorni[prossima.weekday()]
+
+    return f"{giorno_nome} {prossima.strftime('%d/%m/%Y')}"
 
 supabase = create_client(
     st.secrets["SUPABASE_URL"],
@@ -32,7 +53,7 @@ PASSWORD_APP = st.secrets["PASSWORD_APP"]
 
 def invia_email(destinatari, prezzo, template, nome=""):
     try:
-        data = datetime.now().strftime("%d/%m/%Y")
+        data = data_operativa()
 
         testo = template \
             .replace("{prezzo}", f"{prezzo:.3f}") \
@@ -387,18 +408,17 @@ if st.session_state.page == "dashboard":
             import urllib.parse
 
             tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
-            data = datetime.now().strftime("%d/%m/%Y")
 
             msg = st.session_state.wa_template \
-                .replace("{prezzo}", format_euro(prezzo)) \
-                .replace("{nome}", c["Nome"]) \
-                .replace("{data}", data)
+            .replace("{prezzo}", format_euro(prezzo)) \
+            .replace("{nome}", c["Nome"]) \
+            .replace("{data}", data_operativa())
 
-            msg_encoded = urllib.parse.quote(msg)
+             msg_encoded = urllib.parse.quote(msg)
 
-            wa = f"https://wa.me/{tel}?text={msg_encoded}"
+             wa = f"https://wa.me/{tel}?text={msg_encoded}"
 
-            st.link_button("📲 WhatsApp", wa)
+             st.link_button("📲 WhatsApp", wa)
 
         with col2:
             if c["Email"] and pd.notna(c["Email"]):
