@@ -7,9 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from supabase import create_client
 
-# =========================
-# 🔧 DATA OPERATIVA
-# =========================
+# ✅ AGGIUNTA
 def data_operativa():
     oggi = datetime.now()
 
@@ -54,6 +52,7 @@ PASSWORD_APP = st.secrets["PASSWORD_APP"]
 
 def invia_email(destinatari, prezzo, template, nome=""):
     try:
+        # ✅ MODIFICA QUI
         data = data_operativa()
 
         testo = template \
@@ -172,76 +171,55 @@ if "prezzo_base" not in st.session_state:
     st.session_state.prezzo_base = 1.000
 
 if "email_template" not in st.session_state:
-    st.session_state.email_template = """..."""  # lasciato IDENTICO
+    st.session_state.email_template = """<div style="font-family: Serif, Arial, sans-serif; font-size:14px; line-height:1.5; color:#000000;">
+
+Gentile cliente,<br><br>
+
+con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata in oggetto.<br><br>
+
+<b>Gasolio per autotrazione = {prezzo}/litro + Iva</b><br><br>
+
+Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.<br><br>
+
+Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.<br><br>
+
+<b>ATTENZIONE!!!</b> GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO<br><br>
+
+Enrico Procaccini - 3892159094
+</div>
+"""
 
 if "wa_template" not in st.session_state:
-    st.session_state.wa_template = """..."""  # lasciato IDENTICO
+    st.session_state.wa_template = """Gentile cliente {nome},
+
+Data: {data}
+
+Gasolio per autotrazione = {prezzo}/litro + Iva
+"""
 
 df = st.session_state.clienti
-
-# =========================
-# NAV
-# =========================
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    if st.button("📊 Dashboard", use_container_width=True):
-        st.session_state.page = "dashboard"
-
-with c2:
-    if st.button("👤 Clienti", use_container_width=True):
-        st.session_state.page = "clienti"
-
-with c3:
-    if st.button("➕ Nuovo", use_container_width=True):
-        st.session_state.page = "cliente"
-
-st.divider()
 
 # =========================
 # DASHBOARD
 # =========================
 if st.session_state.page == "dashboard":
 
-    prezzo_base = st.number_input(
-        "⛽ Prezzo base",
-        value=float(st.session_state.prezzo_base),
-        step=0.001,
-        format="%.3f"
-    )
-
-    st.session_state.prezzo_base = prezzo_base
-
-    if st.button("📧 Invia email a tutti"):
-        for _, c in df.iterrows():
-            if c["Email"] and pd.notna(c["Email"]):
-                prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
-                invia_email(c["Email"], prezzo, st.session_state.email_template, c["Nome"])
+    prezzo_base = st.number_input("Prezzo base", value=float(st.session_state.prezzo_base), step=0.001)
 
     for _, c in df.iterrows():
 
         prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
 
-        col1, col2 = st.columns(2)
+        import urllib.parse
 
-        with col1:
-            import urllib.parse
+        tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
 
-            tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
+        # ✅ MODIFICA QUI
+        msg = st.session_state.wa_template \
+            .replace("{prezzo}", format_euro(prezzo)) \
+            .replace("{nome}", c["Nome"]) \
+            .replace("{data}", data_operativa())
 
-            msg = st.session_state.wa_template \
-                .replace("{prezzo}", format_euro(prezzo)) \
-                .replace("{nome}", c["Nome"]) \
-                .replace("{data}", data_operativa())
+        wa = f"https://wa.me/{tel}?text={urllib.parse.quote(msg)}"
 
-            msg_encoded = urllib.parse.quote(msg)
-
-            wa = f"https://wa.me/{tel}?text={msg_encoded}"
-
-            st.link_button("📲 WhatsApp", wa)
-
-        with col2:
-            if c["Email"] and pd.notna(c["Email"]):
-                if st.button("📧 Email", key=f"mail_{c['ID']}"):
-                    invia_email(c["Email"], prezzo, st.session_state.email_template, c["Nome"])
-                    st.success("Email inviata")
+        st.link_button("WhatsApp", wa)
