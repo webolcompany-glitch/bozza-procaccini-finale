@@ -11,7 +11,6 @@ supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_KEY"]
 )
-
 st.set_page_config(page_title="Fuel SaaS", layout="wide")
 
 # =========================
@@ -44,6 +43,7 @@ def invia_email(destinatari, prezzo, template, nome=""):
         msg["Subject"] = f"OFFERTA CARBURANTE - {data}"
         msg["From"] = EMAIL_MITTENTE
 
+        # 👉 lista email
         lista_email = [e.strip() for e in destinatari.split(",") if e.strip()]
 
         if not lista_email:
@@ -120,6 +120,7 @@ def load_data():
     return df
 
 def save_data(df):
+
     records = df.rename(columns={
         "ID":"id",
         "Nome":"nome",
@@ -164,30 +165,85 @@ Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazi
 
 <b>ATTENZIONE!!!</b> GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO<br><br>
 
-Enrico Procaccini - 3892159094<br><br>
+Enrico Procaccini - 3892159094 &nbsp;&nbsp;&nbsp;
+<br>
+<br>
+<br>
+<!-- FIRMA -->
+<div style="font-family: Verdana, sans-serif; font-size:11px; line-height:1.4; color:#2F5496; margin-top:10px;">
 
-<div style="font-family: Verdana; font-size:11px; color:#2F5496;">
-<b>Long Life Consulting</b><br>
+<p><b>Long Life Consulting</b></p>
+
+<p>
 Enrico Procaccini<br>
-Corso Italia, 46 – 80011 Acerra (NA)<br>
+<br>
+Corso Italia, 46 – 80011 Acerra (NA)
+</p>
+
+<p>
 Mob: 3892159094<br>
+<br>
 Info: eprocaccini@longlifecons.com
+</p>
+<br>
+<br>
+<br>
+<p>
+Wholeses Fuels - Fuel Cards - Coupons<br>
+<br>
+<b>Agente di</b><br><br>
+
+<img src="https://longlifecons.com/wp-content/Prodotti/Tamoil.svg.png" width="90">
+</p>
+
+<p>
+Via Andrea Costa, 17 20131 Milano, ITALIA
+</p>
+
+<p>
+Tel: 800 11 33 30
+</p>
+
+</div>
+
+<br>
+
+<!-- DISCLAIMER -->
+<div style="font-family: Verdana, Arial, sans-serif; font-size:11px; color:#000000; line-height:1.4;">
+<i>
+La presente comunicazione, con le informazioni in essa contenute e ogni documento o file allegato, e' strettamente riservata e soggetta alle garanzie che legano i rapporti tra le parti interessate. E' rivolta unicamente alla/e persona/e cui e' indirizzata ed alle altre da questa autorizzata/e a riceverla. Se non siete i destinatari/autorizzati siete avvisati che qualsiasi azione, copia, comunicazione, divulgazione o simili basate sul contenuto di tali informazioni e' vietata e potrebbe essere contro la legge (art. 616 e seguenti C.P., regolamento UE 2016/679). Se avete ricevuto questa comunicazione per errore, vi preghiamo di darne immediata notizia al mittente a mezzo telefono, fax o e-mail e di distruggere il messaggio originale e ogni file allegato senza farne copia alcuna o riprodurne in alcun modo il contenuto. Grazie. Long Life Consulting.
+<br><br>
+This e-mail and its attachments are intended for the addressee(s) only and are confidential and/or may contain legally privileged information. If you have received this message by mistake or are not one of the addressees above, you may take no action based on it, and you may not copy or show it to anyone; please reply to this e-mail and point out the error which has occurred. Thank you. Long Life Consulting.
+</i>
 </div>
 
 </div>
 """
-
 if "wa_template" not in st.session_state:
     st.session_state.wa_template = """Gentile cliente {nome},
 
+con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata di seguito indicata.
+
 Data: {data}
 
-Gasolio = {prezzo}/litro + IVA
+Gasolio per autotrazione = {prezzo}/litro + Iva
 
+Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.
+
+Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.
+
+ATTENZIONE!!! GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO
+Enrico Procaccini - 3892159094                
+
+Cordiali saluti
 Long Life Consulting
 Enrico Procaccini
+Corso Italia, 46 – 80011 Acerra (NA)
+Mob: 3892159094
+Info : eprocaccini@longlifecons.com
+Wholeses Fuels - Fuel Cards - Coupons
+Agente di TAMOIL ITALIA S.P.A
 """
-
 df = st.session_state.clienti
 
 # =========================
@@ -221,14 +277,15 @@ def card(title, value):
     </div>
     """
 
-# =========================
-# DASHBOARD
-# =========================
+# =========================================================
+# 📊 DASHBOARD
+# =========================================================
 if st.session_state.page == "dashboard":
-    st.markdown("## ⛽ Dashboard")
+
+    st.markdown("## ⛽ Dashboard operativa")
 
     prezzo_base = st.number_input(
-        "Prezzo base",
+        "⛽ Prezzo base",
         value=float(st.session_state.prezzo_base),
         step=0.001,
         format="%.3f"
@@ -236,18 +293,232 @@ if st.session_state.page == "dashboard":
 
     st.session_state.prezzo_base = prezzo_base
 
-    st.info("Dashboard caricata correttamente")
+    clienti_count = len(df)
+    media_margine = round(df["Margine"].mean(), 3) if not df.empty else 0
 
-# =========================
-# CLIENTI
-# =========================
+    prezzo_medio = (
+        calc_price(prezzo_base, df["Margine"].mean(), df["Trasporto"].mean())
+        if not df.empty else prezzo_base
+    )
+
+    c1, c2 = st.columns(2)
+    c3, c4 = st.columns(2)
+
+    with c1:
+        st.markdown(card("⛽ Base", format_euro(prezzo_base)), unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(card("👤 Clienti", clienti_count), unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(card("📊 Margine medio", format_euro(media_margine)), unsafe_allow_html=True)
+
+    with c4:
+        st.markdown(card("💰 Prezzo medio", format_euro(prezzo_medio)), unsafe_allow_html=True)
+
+    st.divider()
+
+    st.markdown("### ✉️ Messaggio Email")
+    st.info("""
+    ⚠️ ATTENZIONE
+    Modifica solo il contenuto del messaggio.
+    NON modificare:
+    - i tag HTML (es. <b>, <br>, <hr>)
+    - le variabili tra parentesi graffe (es. {prezzo}, {nome}, {data})
+    
+    ✔ Puoi cambiare le frasi liberamente
+    ❌ Non cancellare o modificare i simboli tecnici
+    """)
+        
+    template = st.text_area(
+        "Modifica il messaggio",
+        value=st.session_state.email_template,
+        height=300
+    )
+
+    st.session_state.email_template = template
+
+    st.divider()
+
+    if st.button("📧 Invia email a tutti"):
+
+        count = 0
+
+        for _, c in df.iterrows():
+
+            if c["Email"] and pd.notna(c["Email"]):
+
+                prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+
+                invia_email(c["Email"], prezzo, template, c["Nome"])
+
+                st.session_state.clienti.loc[
+                    st.session_state.clienti["ID"] == c["ID"],
+                    "UltimoPrezzo"
+                ] = prezzo
+
+                count += 1
+
+        save_data(st.session_state.clienti)
+        st.success(f"Email inviate: {count}")
+
+    st.markdown("### 👤 Clienti")
+
+    search_dash = st.text_input("🔍 Cerca", key="search_dashboard")
+    df_view = filtra_clienti(df, search_dash)
+
+    for _, c in df_view.iterrows():
+
+        prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+
+        ultimo = c["UltimoPrezzo"]
+        ultimo_txt = "Nessun invio" if pd.isna(ultimo) else format_euro(ultimo) + " €/L"
+
+        st.markdown(f"""
+        ### 👤 {c['Nome']}
+        📄 P.IVA: {c['PIVA']}  
+        💰 Oggi: {format_euro(prezzo)} €/L  
+        📌 Ultimo: **{ultimo_txt}**
+        """)
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            import urllib.parse
+
+            tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
+            data = datetime.now().strftime("%d/%m/%Y")
+
+            msg = st.session_state.wa_template \
+                .replace("{prezzo}", format_euro(prezzo)) \
+                .replace("{nome}", c["Nome"]) \
+                .replace("{data}", data)
+
+            msg_encoded = urllib.parse.quote(msg)
+
+            wa = f"https://wa.me/{tel}?text={msg_encoded}"
+
+            st.link_button("📲 WhatsApp", wa)
+
+        with col2:
+            if c["Email"] and pd.notna(c["Email"]):
+                if st.button("📧 Email", key=f"mail_{c['ID']}"):
+
+                    prezzo_send = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+
+                    invia_email(c["Email"], prezzo_send, template, c["Nome"])
+
+                    st.session_state.clienti.loc[
+                        st.session_state.clienti["ID"] == c["ID"],
+                        "UltimoPrezzo"
+                    ] = prezzo_send
+
+                    save_data(st.session_state.clienti)
+                    st.success("Email inviata")
+
+        with col3:
+            if st.button("🗑️ Elimina", key=f"del_{c['ID']}"):
+                st.session_state.clienti = df[df["ID"] != c["ID"]]
+                save_data(st.session_state.clienti)
+                st.rerun()
+
+# =========================================================
+# 👤 CLIENTI PAGE
+# =========================================================
 elif st.session_state.page == "clienti":
-    st.markdown("## Clienti")
-    st.dataframe(df)
 
-# =========================
-# CLIENTE
-# =========================
+    st.markdown("## 👤 Clienti")
+
+    search = st.text_input("🔍 Cerca cliente")
+    df_view = filtra_clienti(df, search)
+
+    for _, c in df_view.iterrows():
+
+        ultimo_txt = "Nessun invio" if pd.isna(c["UltimoPrezzo"]) else format_euro(c["UltimoPrezzo"]) + " €/L"
+
+        st.markdown(f"""
+        ### 👤 {c['Nome']}
+        📄 {c['PIVA']}  
+        📞 {c['Telefono']}  
+        💰 Ultimo: {ultimo_txt}
+        """)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("✏️ Modifica", key=f"edit_{c['ID']}"):
+                st.session_state.edit_id = c["ID"]
+                st.session_state.page = "cliente"
+
+        with col2:
+            if st.button("🗑️ Elimina", key=f"del_list_{c['ID']}"):
+                st.session_state.clienti = df[df["ID"] != c["ID"]]
+                save_data(st.session_state.clienti)
+                st.rerun()
+
+        st.divider()
+
+# =========================================================
+# ➕ CLIENTE PAGE
+# =========================================================
 elif st.session_state.page == "cliente":
-    st.markdown("## Nuovo Cliente")
-    st.text_input("Nome")
+
+    st.markdown("## ➕ Cliente")
+
+    editing = st.session_state.edit_id is not None
+
+    if editing:
+        c = df[df["ID"] == st.session_state.edit_id].iloc[0]
+    else:
+        c = {"Nome":"","PIVA":"","Telefono":"","Email":"","Margine":0.0,"Trasporto":0.0}
+
+    nome = st.text_input("Nome", value=c["Nome"])
+    piva = st.text_input("P.IVA", value=c["PIVA"])
+    tel = st.text_input("Telefono", value=c["Telefono"])
+    email = st.text_input(
+    "Email",
+    value=c["Email"],
+    placeholder="es: principale@mail.com, cc@mail.com"
+    )
+
+    st.caption(
+    "ℹ️ Scrivi prima l'email principale. "
+    "Le successive separate da virgola saranno usate come CC (conoscenza)."
+    )
+    margine = st.number_input("Margine", value=float(c["Margine"]), step=0.001, format="%.3f")
+    trasporto = st.number_input("Trasporto", value=float(c["Trasporto"]), step=0.001, format="%.3f")
+
+    if st.button("💾 Salva"):
+
+        if editing:
+            idx = st.session_state.clienti["ID"] == st.session_state.edit_id
+
+            st.session_state.clienti.loc[idx, "Nome"] = nome
+            st.session_state.clienti.loc[idx, "PIVA"] = piva
+            st.session_state.clienti.loc[idx, "Telefono"] = tel
+            st.session_state.clienti.loc[idx, "Email"] = email
+            st.session_state.clienti.loc[idx, "Margine"] = margine
+            st.session_state.clienti.loc[idx, "Trasporto"] = trasporto
+
+            st.session_state.edit_id = None
+
+        else:
+            new_id = 1 if df.empty else int(df["ID"].max()) + 1
+
+            new = pd.DataFrame([{
+                "ID": new_id,
+                "Nome": nome,
+                "PIVA": piva,
+                "Telefono": tel,
+                "Email": email,
+                "Margine": margine,
+                "Trasporto": trasporto,
+                "UltimoPrezzo": None
+            }])
+
+            st.session_state.clienti = pd.concat([df, new], ignore_index=True)
+
+        save_data(st.session_state.clienti)
+        st.success("Salvato")
+        st.session_state.page = "clienti"
+        st.rerun()
