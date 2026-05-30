@@ -2,14 +2,19 @@ import streamlit as st
 import pandas as pd
 import os
 import smtplib
+import urllib.parse
+
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from supabase import create_client
 
 
+# =========================
+# 📅 PASQUA + FESTIVI
+# =========================
+
 def pasqua(anno):
-    """Calcolo Pasqua (algoritmo di Gauss)"""
     a = anno % 19
     b = anno // 100
     c = anno % 100
@@ -17,13 +22,13 @@ def pasqua(anno):
     e = b % 4
     f = (b + 8) // 25
     g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
+    h = (19*a + b - d - g + 15) % 30
     i = c // 4
     k = c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    mese = (h + l - 7 * m + 114) // 31
-    giorno = ((h + l - 7 * m + 114) % 31) + 1
+    l = (32 + 2*e + 2*i - h - k) % 7
+    m = (a + 11*h + 22*l) // 451
+    mese = (h + l - 7*m + 114) // 31
+    giorno = ((h + l - 7*m + 114) % 31) + 1
     return datetime(anno, mese, giorno)
 
 
@@ -52,16 +57,17 @@ def prossimo_giorno_lavorativo(data=None):
         data = datetime.now()
 
     giorno = data + timedelta(days=1)
-    festivi = festivi_italiani(giorno.year)
 
-    while giorno.weekday() >= 5 or giorno.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    ) in festivi:
-        giorno += timedelta(days=1)
+    while True:
         festivi = festivi_italiani(giorno.year)
+        if giorno.weekday() < 5 and giorno.replace(hour=0, minute=0, second=0, microsecond=0) not in festivi:
+            return giorno
+        giorno += timedelta(days=1)
 
-    return giorno
 
+# =========================
+# SUPABASE
+# =========================
 
 supabase = create_client(
     st.secrets["SUPABASE_URL"],
@@ -70,19 +76,20 @@ supabase = create_client(
 
 st.set_page_config(page_title="Fuel SaaS", layout="wide")
 
+
 # =========================
-# 🏢 AZIENDA
+# AZIENDA
 # =========================
 
 azienda = st.query_params.get("azienda", "demo")
 if isinstance(azienda, list):
     azienda = azienda[0]
 
-FILE = f"clienti_{azienda}.csv"
 st.markdown(f"## 🏢 Azienda: {azienda.upper()}")
 
+
 # =========================
-# 📧 EMAIL
+# EMAIL
 # =========================
 
 EMAIL_MITTENTE = st.secrets["EMAIL_MITTENTE"]
@@ -91,23 +98,20 @@ PASSWORD_APP = st.secrets["PASSWORD_APP"]
 
 def invia_email(destinatari, prezzo, template, nome=""):
     try:
-        data_invio = datetime.now()
         data_scarico = prossimo_giorno_lavorativo()
+        giorni = ["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"]
 
-        giorni = [
-            "Lunedì", "Martedì", "Mercoledì",
-            "Giovedì", "Venerdì", "Sabato", "Domenica"
-        ]
-        giorno_nome = giorni[data_scarico.weekday()]
-        data = f"{giorno_nome} {data_scarico.strftime('%d/%m/%Y')}"
+        data_txt = f"{giorni[data_scarico.weekday()]} {data_scarico.strftime('%d/%m/%Y')}"
 
-        testo = template \
-            .replace("{prezzo}", f"{prezzo:.3f}") \
-            .replace("{nome}", nome) \
-            .replace("{data}", data)
+        testo = (
+            template
+            .replace("{prezzo}", f"{prezzo:.3f}")
+            .replace("{nome}", nome)
+            .replace("{data}", data_txt)
+        )
 
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"OFFERTA CARBURANTE - PREZZI VALIDI PER {data}"
+        msg["Subject"] = f"OFFERTA CARBURANTE - VALIDITÀ {data_txt}"
         msg["From"] = EMAIL_MITTENTE
 
         lista_email = [e.strip() for e in destinatari.split(",") if e.strip()]
@@ -131,13 +135,13 @@ def invia_email(destinatari, prezzo, template, nome=""):
 
 
 # =========================
-# 🔒 UTIL
+# UTIL
 # =========================
 
 def format_euro(x):
     if x is None or pd.isna(x):
         return "0,000"
-    return f"{round(float(x), 3):.3f}".replace(".", ",")
+    return f"{float(x):.3f}".replace(".", ",")
 
 
 def calc_price(base, margine, trasporto):
@@ -147,16 +151,15 @@ def calc_price(base, margine, trasporto):
 def filtra_clienti(df, search):
     if not search:
         return df
-
     return df[
-        df["Nome"].astype(str).str.contains(search, case=False, na=False)
-        | df["PIVA"].astype(str).str.contains(search, case=False, na=False)
-        | df["Telefono"].astype(str).str.contains(search, case=False, na=False)
+        df["Nome"].astype(str).str.contains(search, case=False, na=False) |
+        df["PIVA"].astype(str).str.contains(search, case=False, na=False) |
+        df["Telefono"].astype(str).str.contains(search, case=False, na=False)
     ]
 
 
 # =========================
-# 💾 DATA
+# DATA SUPABASE
 # =========================
 
 def load_data():
@@ -165,34 +168,34 @@ def load_data():
 
     if not data:
         return pd.DataFrame(columns=[
-            "ID", "Nome", "PIVA", "Telefono", "Email",
-            "Margine", "Trasporto", "UltimoPrezzo"
+            "ID","Nome","PIVA","Telefono","Email",
+            "Margine","Trasporto","UltimoPrezzo"
         ])
 
     df = pd.DataFrame(data)
 
     return df.rename(columns={
-        "id": "ID",
-        "nome": "Nome",
-        "piva": "PIVA",
-        "telefono": "Telefono",
-        "email": "Email",
-        "margine": "Margine",
-        "trasporto": "Trasporto",
-        "ultimo_prezzo": "UltimoPrezzo"
+        "id":"ID",
+        "nome":"Nome",
+        "piva":"PIVA",
+        "telefono":"Telefono",
+        "email":"Email",
+        "margine":"Margine",
+        "trasporto":"Trasporto",
+        "ultimo_prezzo":"UltimoPrezzo"
     })
 
 
 def save_data(df):
     records = df.rename(columns={
-        "ID": "id",
-        "Nome": "nome",
-        "PIVA": "piva",
-        "Telefono": "telefono",
-        "Email": "email",
-        "Margine": "margine",
-        "Trasporto": "trasporto",
-        "UltimoPrezzo": "ultimo_prezzo"
+        "ID":"id",
+        "Nome":"nome",
+        "PIVA":"piva",
+        "Telefono":"telefono",
+        "Email":"email",
+        "Margine":"margine",
+        "Trasporto":"trasporto",
+        "UltimoPrezzo":"ultimo_prezzo"
     }).to_dict(orient="records")
 
     if records:
@@ -200,7 +203,7 @@ def save_data(df):
 
 
 # =========================
-# INIT
+# INIT SESSION
 # =========================
 
 if "clienti" not in st.session_state:
@@ -215,10 +218,103 @@ if "edit_id" not in st.session_state:
 if "prezzo_base" not in st.session_state:
     st.session_state.prezzo_base = 1.000
 
-if "email_template" not in st.session_state:
-    st.session_state.email_template = """<div>..."""
-    
-if "wa_template" not in st.session_state:
-    st.session_state.wa_template = """..."""
-
 df = st.session_state.clienti
+
+
+# =========================
+# NAV
+# =========================
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    if st.button("📊 Dashboard", use_container_width=True):
+        st.session_state.page = "dashboard"
+
+with c2:
+    if st.button("👤 Clienti", use_container_width=True):
+        st.session_state.page = "clienti"
+
+with c3:
+    if st.button("➕ Nuovo", use_container_width=True):
+        st.session_state.page = "cliente"
+
+st.divider()
+
+
+# =========================
+# CARD
+# =========================
+
+def card(title, value):
+    return f"""
+    <div style="padding:14px;border-radius:14px;background:#111827;color:white;text-align:center;margin:6px 0;">
+        <div style="font-size:12px;opacity:0.7;">{title}</div>
+        <div style="font-size:20px;font-weight:600">{value}</div>
+    </div>
+    """
+
+
+# =========================
+# DASHBOARD
+# =========================
+
+if st.session_state.page == "dashboard":
+
+    st.markdown("## ⛽ Dashboard operativa")
+
+    prezzo_base = st.number_input(
+        "⛽ Prezzo base",
+        value=float(st.session_state.prezzo_base),
+        step=0.001,
+        format="%.3f"
+    )
+
+    st.session_state.prezzo_base = prezzo_base
+
+    clienti_count = len(df)
+    media_margine = df["Margine"].mean() if not df.empty else 0
+    media_trasporto = df["Trasporto"].mean() if not df.empty else 0
+
+    prezzo_medio = calc_price(prezzo_base, media_margine, media_trasporto)
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown(card("⛽ Base", format_euro(prezzo_base)), unsafe_allow_html=True)
+    with c2:
+        st.markdown(card("👤 Clienti", clienti_count), unsafe_allow_html=True)
+    with c3:
+        st.markdown(card("📊 Margine medio", format_euro(media_margine)), unsafe_allow_html=True)
+    with c4:
+        st.markdown(card("💰 Prezzo medio", format_euro(prezzo_medio)), unsafe_allow_html=True)
+
+    st.divider()
+
+    st.markdown("### ✉️ Messaggio Email")
+
+    template = st.text_area(
+        "Template email",
+        value="""<div>... il tuo template originale ...</div>""",
+        height=300
+    )
+
+    st.session_state.email_template = template
+
+    if st.button("📧 Invia email a tutti"):
+        count = 0
+
+        for _, c in df.iterrows():
+            if c["Email"]:
+                prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+                invia_email(c["Email"], prezzo, template, c["Nome"])
+
+                st.session_state.clienti.loc[
+                    st.session_state.clienti["ID"] == c["ID"],
+                    "UltimoPrezzo"
+                ] = prezzo
+
+                count += 1
+
+        save_data(st.session_state.clienti)
+        st.success(f"Email inviate: {count}")
