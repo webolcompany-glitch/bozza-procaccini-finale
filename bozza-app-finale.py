@@ -1,108 +1,109 @@
 import streamlit as st
+import pandas as pd
+import smtplib
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from supabase import create_client
+import urllib.parse
 
 # =========================
 # CONFIG
 # =========================
-st.set_page_config(
-    page_title="FuelCRM",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="FuelCRM", layout="wide")
 
 # =========================
-# GLOBAL CSS (UI SaaS STYLE)
+# SUPABASE
+# =========================
+supabase = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"]
+)
+
+EMAIL = st.secrets["EMAIL_MITTENTE"]
+PASSW = st.secrets["PASSWORD_APP"]
+
+# =========================
+# STATE
+# =========================
+if "page" not in st.session_state:
+    st.session_state.page = "dashboard"
+
+if "base" not in st.session_state:
+    st.session_state.base = 1.000
+
+
+# =========================
+# LOAD DATA
+# =========================
+def load():
+    res = supabase.table("clienti").select("*").execute()
+    return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+
+def save(df):
+    supabase.table("clienti").upsert(df.to_dict("records")).execute()
+
+df = load()
+
+# =========================
+# UTIL
+# =========================
+def calc(base, m):
+    return round(base + float(m), 3)
+
+def next_workday():
+    d = datetime.now() + timedelta(days=1)
+    while d.weekday() >= 5:
+        d += timedelta(days=1)
+    return d
+
+
+# =========================
+# EMAIL
+# =========================
+def send_email(to, subject, html):
+    msg = MIMEMultipart()
+    msg["From"] = EMAIL
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.attach(MIMEText(html, "html"))
+
+    s = smtplib.SMTP("smtp.gmail.com", 587)
+    s.starttls()
+    s.login(EMAIL, PASSW)
+    s.send_message(msg)
+    s.quit()
+
+
+# =========================
+# UI STYLE
 # =========================
 st.markdown("""
 <style>
 
-/* ========== MAIN ========== */
-.block-container {
-    padding: 1.5rem 2rem;
-    background-color: #f6f7fb;
+.block-container {padding: 1.5rem; background:#f4f6fb;}
+
+[data-testid="stSidebar"] {background:#0b1324;}
+
+.kpi {
+    background:white;
+    padding:18px;
+    border-radius:16px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.06);
 }
 
-/* ========== SIDEBAR ========== */
-[data-testid="stSidebar"] {
-    background-color: #0f172a;
+.title {font-size:28px;font-weight:800;}
+.sub {color:#6b7280;margin-top:-6px;}
+
+.card {
+    background:white;
+    padding:15px;
+    border-radius:14px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.05);
 }
 
-[data-testid="stSidebar"] * {
-    color: white;
-    font-weight: 500;
-}
-
-/* logo/title */
-.sidebar-title {
-    font-size: 22px;
-    font-weight: 800;
-    margin-bottom: 20px;
-}
-
-/* menu item */
-.menu-item {
-    padding: 10px 12px;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    cursor: pointer;
-}
-
-/* highlight dashboard */
-.active {
-    background: #f59e0b;
-    color: black !important;
-    font-weight: 700;
-}
-
-/* ========== TOP HEADER ========== */
-.header-title {
-    font-size: 28px;
-    font-weight: 800;
-}
-
-.subtext {
-    color: #6b7280;
-    margin-top: -8px;
-}
-
-/* ========== KPI CARDS ========== */
-.kpi-card {
-    background: white;
-    border-radius: 16px;
-    padding: 18px 18px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.kpi-title {
-    font-size: 14px;
-    color: #6b7280;
-}
-
-.kpi-value {
-    font-size: 22px;
-    font-weight: 800;
-}
-
-/* icon box */
-.icon-box {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-}
-
-/* ========== CLIENT BOX ========== */
-.empty-box {
-    background: white;
-    border-radius: 16px;
-    padding: 60px;
-    text-align: center;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+button {
+    border-radius:10px !important;
 }
 
 </style>
@@ -113,99 +114,132 @@ st.markdown("""
 # SIDEBAR
 # =========================
 with st.sidebar:
-
     st.markdown("## ⛽ FuelCRM")
 
-    st.markdown("### Menu")
+    if st.button("📊 Dashboard"):
+        st.session_state.page = "dashboard"
 
-    st.markdown('<div class="menu-item active">📊 Dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="menu-item">👤 Clienti</div>', unsafe_allow_html=True)
-    st.markdown('<div class="menu-item">➕ Nuovo Cliente</div>', unsafe_allow_html=True)
+    if st.button("👤 Clienti"):
+        st.session_state.page = "clienti"
 
-    st.write("")
+    if st.button("➕ Nuovo"):
+        st.session_state.page = "new"
+
+    st.write("---")
+
     if st.button("🚪 Esci"):
         st.stop()
 
 
 # =========================
-# HEADER
+# DASHBOARD
 # =========================
-st.markdown('<div class="header-title">Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtext">Gestione prezzi e invio offerte</div>', unsafe_allow_html=True)
+if st.session_state.page == "dashboard":
 
+    st.markdown('<div class="title">Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub">Gestione prezzi e invio offerte</div>', unsafe_allow_html=True)
 
-# =========================
-# TOP BAR (INPUT + BUTTON)
-# =========================
-col1, col2, col3 = st.columns([3, 1, 1])
+    col1, col2 = st.columns([3,1])
 
-with col1:
-    pass
+    with col1:
+        base = st.number_input("Prezzo base €/L", value=st.session_state.base)
 
-with col2:
-    prezzo = st.text_input("Prezzo Base (€/L)", "1.0000")
+    with col2:
+        st.write("")
+        st.button("📩 Invia a tutti")
 
-with col3:
+    st.session_state.base = base
+
     st.write("")
-    st.button("📩 Invia a Tutti")
 
+    # KPI
+    clienti = len(df)
+    margine = df["margine"].mean() if not df.empty else 0
+    prezzo = base + margine
 
-st.write("---")
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown(f"<div class='kpi'><b>Clienti</b><h2>{clienti}</h2></div>", unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"<div class='kpi'><b>Margine</b><h2>€{margine:.3f}</h2></div>", unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"<div class='kpi'><b>Prezzo medio</b><h2>€{prezzo:.3f}</h2></div>", unsafe_allow_html=True)
+
+    st.write("---")
+
+    st.markdown("### Clienti")
+
+    if df.empty:
+        st.info("Nessun cliente ancora")
+    else:
+        for _, c in df.iterrows():
+
+            price = calc(base, c["margine"])
+            data = next_workday().strftime("%d/%m/%Y")
+
+            st.markdown(f"""
+            <div class='card'>
+            <b>{c['nome']}</b><br>
+            📧 {c['email']}<br>
+            💰 {price} €/L
+            </div>
+            """, unsafe_allow_html=True)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                msg = f"Offerta carburante {price} €/L per il {data}"
+                wa = f"https://wa.me/{c['telefono']}?text={urllib.parse.quote(msg)}"
+                st.link_button("WhatsApp", wa)
+
+            with col2:
+                if st.button("Email", key=c["id"]):
+                    html = f"<h3>Offerta carburante</h3><p>Prezzo: {price} €/L</p>"
+                    send_email(c["email"], "Offerta carburante", html)
+                    st.success("Inviata")
 
 
 # =========================
-# KPI ROW
+# CLIENTI
 # =========================
-c1, c2, c3 = st.columns(3)
+elif st.session_state.page == "clienti":
 
-with c1:
-    st.markdown("""
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-title">Clienti</div>
-            <div class="kpi-value">0</div>
+    st.markdown("### Clienti")
+
+    for _, c in df.iterrows():
+        st.markdown(f"""
+        <div class='card'>
+        <b>{c['nome']}</b><br>
+        {c['email']} - {c['telefono']}
         </div>
-        <div class="icon-box" style="background:#e0e7ff;">👤</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c2:
-    st.markdown("""
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-title">Margine Medio</div>
-            <div class="kpi-value">€0.0000/L</div>
-        </div>
-        <div class="icon-box" style="background:#ffedd5;">📈</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c3:
-    st.markdown("""
-    <div class="kpi-card">
-        <div>
-            <div class="kpi-title">Prezzo Medio</div>
-            <div class="kpi-value">€0.0000/L</div>
-        </div>
-        <div class="icon-box" style="background:#dcfce7;">💲</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-st.write("---")
+        """, unsafe_allow_html=True)
 
 
 # =========================
-# CLIENT SECTION
+# NEW CLIENT
 # =========================
-st.markdown("### Clienti (0)")
+elif st.session_state.page == "new":
 
-st.markdown("""
-<div class="empty-box">
-    <div style="font-size:40px;">⛽</div>
-    <h3>Nessun cliente ancora</h3>
-    <p style="color:#6b7280;">
-        Aggiungi il primo cliente per iniziare a gestire le offerte.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+    st.markdown("### Nuovo Cliente")
+
+    with st.form("f"):
+        nome = st.text_input("Nome")
+        email = st.text_input("Email")
+        tel = st.text_input("Telefono")
+        margine = st.number_input("Margine", value=0.0, step=0.001)
+
+        ok = st.form_submit_button("Salva")
+
+        if ok:
+            supabase.table("clienti").insert({
+                "nome": nome,
+                "email": email,
+                "telefono": tel,
+                "margine": margine
+            }).execute()
+
+            st.success("Cliente creato")
+            st.rerun()
