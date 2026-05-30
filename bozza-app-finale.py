@@ -62,7 +62,10 @@ def prossimo_giorno_lavorativo(data=None):
     while True:
         festivi = festivi_italiani(giorno.year)
 
-        if giorno.weekday() < 5 and giorno.replace(hour=0, minute=0, second=0, microsecond=0) not in festivi:
+        if (
+            giorno.weekday() < 5
+            and giorno.replace(hour=0, minute=0, second=0, microsecond=0) not in festivi
+        ):
             return giorno
 
         giorno += timedelta(days=1)
@@ -272,25 +275,62 @@ if st.session_state.page == "dashboard":
 
     st.divider()
 
-    st.markdown("### 👤 Clienti")
-
-    search = st.text_input("🔍 Cerca")
+    search = st.text_input("🔍 Cerca cliente")
     df_view = filtra_clienti(df, search)
+
+    # =========================
+    # 📧 INVIA EMAIL A TUTTI
+    # =========================
+    if st.button("📧 Invia email a tutti"):
+        count = 0
+
+        for _, c in df.iterrows():
+
+            if c["Email"] and pd.notna(c["Email"]):
+
+                prodotti = c.get("Prodotto", ["Auto"])
+
+                if isinstance(prodotti, str):
+                    prodotti = [prodotti]
+
+                base = st.session_state.prezzi_base.get(prodotti[0], 1.000)
+
+                prezzo = calc_price(base, c["Margine"], c["Trasporto"])
+
+                invia_email(
+                    c["Email"],
+                    prezzo,
+                    st.session_state.email_template,
+                    c["Nome"]
+                )
+
+                st.session_state.clienti.loc[
+                    st.session_state.clienti["ID"] == c["ID"],
+                    "UltimoPrezzo"
+                ] = prezzo
+
+                count += 1
+
+        save_data(st.session_state.clienti)
+        st.success(f"Email inviate: {count}")
+
+    st.divider()
+
+    st.markdown("### 👤 Clienti")
 
     for _, c in df_view.iterrows():
 
-        prodotto = c.get("Prodotto", "Auto")
-        base = st.session_state.prezzi_base.get(prodotto, 1.000)
+        prodotti = c.get("Prodotto", ["Auto"])
+        if isinstance(prodotti, str):
+            prodotti = [prodotti]
+
+        base = st.session_state.prezzi_base.get(prodotti[0], 1.000)
 
         prezzo = calc_price(base, c["Margine"], c["Trasporto"])
 
-        st.write(f"{c['Nome']} - {prodotto} - {format_euro(prezzo)} €/L")
+        st.write(f"👤 {c['Nome']} - {prodotti} - {format_euro(prezzo)} €/L")
 
         tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
-
-        data_scarico = prossimo_giorno_lavorativo()
-        giorni = ["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"]
-        data = f"{giorni[data_scarico.weekday()]} {data_scarico.strftime('%d/%m/%Y')}"
 
         msg = f"{c['Nome']} - {prezzo} €/L"
 
@@ -298,7 +338,6 @@ if st.session_state.page == "dashboard":
 
         st.link_button("WhatsApp", wa)
 
-        # FIX DELETE
         if st.button("🗑️ Elimina", key=f"del_{c['ID']}"):
             st.session_state.clienti = st.session_state.clienti[
                 st.session_state.clienti["ID"] != c["ID"]
@@ -308,7 +347,7 @@ if st.session_state.page == "dashboard":
 
 
 # =========================
-# 👤 CLIENTE FORM
+# 👤 CLIENTE
 # =========================
 
 elif st.session_state.page == "cliente":
@@ -318,7 +357,15 @@ elif st.session_state.page == "cliente":
     if editing:
         c = df[df["ID"] == st.session_state.edit_id].iloc[0]
     else:
-        c = {"Nome":"", "PIVA":"", "Telefono":"", "Email":"", "Margine":0.0, "Trasporto":0.0, "Prodotto":"Auto"}
+        c = {
+            "Nome":"",
+            "PIVA":"",
+            "Telefono":"",
+            "Email":"",
+            "Margine":0.0,
+            "Trasporto":0.0,
+            "Prodotto":["Auto"]
+        }
 
     nome = st.text_input("Nome", value=c["Nome"])
     piva = st.text_input("PIVA", value=c["PIVA"])
@@ -328,10 +375,10 @@ elif st.session_state.page == "cliente":
     margine = st.number_input("Margine", value=float(c["Margine"]), step=0.001)
     trasporto = st.number_input("Trasporto", value=float(c["Trasporto"]), step=0.001)
 
-    prodotto = st.selectbox(
-        "Prodotto",
+    prodotti = st.multiselect(
+        "Prodotti associati al cliente",
         ["Auto","Riscaldamento","Agricolo","Benzina"],
-        index=["Auto","Riscaldamento","Agricolo","Benzina"].index(c.get("Prodotto","Auto"))
+        default=c.get("Prodotto", ["Auto"])
     )
 
     if st.button("💾 Salva"):
@@ -345,7 +392,7 @@ elif st.session_state.page == "cliente":
             st.session_state.clienti.loc[idx, "Email"] = email
             st.session_state.clienti.loc[idx, "Margine"] = margine
             st.session_state.clienti.loc[idx, "Trasporto"] = trasporto
-            st.session_state.clienti.loc[idx, "Prodotto"] = prodotto
+            st.session_state.clienti.loc[idx, "Prodotto"] = prodotti
 
         else:
             new_id = 1 if df.empty else int(df["ID"].max()) + 1
@@ -359,7 +406,7 @@ elif st.session_state.page == "cliente":
                 "Margine": margine,
                 "Trasporto": trasporto,
                 "UltimoPrezzo": None,
-                "Prodotto": prodotto
+                "Prodotto": prodotti
             }])
 
             st.session_state.clienti = pd.concat([df, new], ignore_index=True)
