@@ -10,99 +10,117 @@ st.set_page_config(
 )
 
 # =========================
-# GLOBAL CSS (UI SaaS STYLE)
+# STATE
+# =========================
+if "page" not in st.session_state:
+    st.session_state.page = "Dashboard"
+
+def set_page(page):
+    st.session_state.page = page
+
+
+# =========================
+# CSS ULTRA UI
 # =========================
 st.markdown("""
 <style>
 
-/* ========== MAIN ========== */
+/* GLOBAL */
 .block-container {
-    padding: 1.5rem 2rem;
-    background-color: #f6f7fb;
+    padding: 1.2rem 2rem;
+    background: #f4f6fb;
+    font-family: Inter, sans-serif;
 }
 
-/* ========== SIDEBAR ========== */
+/* SIDEBAR */
 [data-testid="stSidebar"] {
-    background-color: #0f172a;
+    background: #0b1324;
 }
 
-[data-testid="stSidebar"] * {
-    color: white;
-    font-weight: 500;
-}
-
-/* logo/title */
-.sidebar-title {
+.sidebar-logo {
     font-size: 22px;
     font-weight: 800;
-    margin-bottom: 20px;
+    color: white;
+    margin-bottom: 25px;
 }
 
-/* menu item */
-.menu-item {
-    padding: 10px 12px;
+.nav-item {
+    padding: 12px 14px;
     border-radius: 10px;
     margin-bottom: 8px;
+    color: #cbd5e1;
     cursor: pointer;
+    transition: 0.2s;
 }
 
-/* highlight dashboard */
-.active {
+.nav-item:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+.nav-active {
     background: #f59e0b;
     color: black !important;
     font-weight: 700;
 }
 
-/* ========== TOP HEADER ========== */
-.header-title {
-    font-size: 28px;
+/* HEADER */
+.title {
+    font-size: 30px;
     font-weight: 800;
 }
 
-.subtext {
+.subtitle {
     color: #6b7280;
-    margin-top: -8px;
+    margin-top: -6px;
 }
 
-/* ========== KPI CARDS ========== */
-.kpi-card {
+/* TOP BAR */
+.topbar {
     background: white;
+    padding: 14px;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+}
+
+/* KPI */
+.kpi {
+    background: white;
+    padding: 18px;
     border-radius: 16px;
-    padding: 18px 18px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    transition: 0.2s;
+}
+
+.kpi:hover {
+    transform: translateY(-2px);
 }
 
 .kpi-title {
-    font-size: 14px;
+    font-size: 13px;
     color: #6b7280;
 }
 
 .kpi-value {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 800;
 }
 
-/* icon box */
-.icon-box {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
+/* EMPTY STATE */
+.empty {
+    background: white;
+    padding: 70px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
 }
 
-/* ========== CLIENT BOX ========== */
-.empty-box {
-    background: white;
-    border-radius: 16px;
-    padding: 60px;
+.button-primary {
+    background: #f59e0b;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: black;
+    font-weight: 700;
     text-align: center;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
 }
 
 </style>
@@ -113,14 +131,14 @@ st.markdown("""
 # SIDEBAR
 # =========================
 with st.sidebar:
+    st.markdown('<div class="sidebar-logo">⛽ FuelCRM</div>', unsafe_allow_html=True)
 
-    st.markdown("## ⛽ FuelCRM")
-
-    st.markdown("### Menu")
-
-    st.markdown('<div class="menu-item active">📊 Dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="menu-item">👤 Clienti</div>', unsafe_allow_html=True)
-    st.markdown('<div class="menu-item">➕ Nuovo Cliente</div>', unsafe_allow_html=True)
+    if st.button("📊 Dashboard"):
+        set_page("Dashboard")
+    if st.button("👤 Clienti"):
+        set_page("Clienti")
+    if st.button("➕ Nuovo Cliente"):
+        set_page("Nuovo")
 
     st.write("")
     if st.button("🚪 Esci"):
@@ -128,84 +146,88 @@ with st.sidebar:
 
 
 # =========================
-# HEADER
+# DASHBOARD
 # =========================
-st.markdown('<div class="header-title">Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtext">Gestione prezzi e invio offerte</div>', unsafe_allow_html=True)
+if st.session_state.page == "Dashboard":
 
+    st.markdown('<div class="title">Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Gestione prezzi e invio offerte</div>', unsafe_allow_html=True)
 
-# =========================
-# TOP BAR (INPUT + BUTTON)
-# =========================
-col1, col2, col3 = st.columns([3, 1, 1])
-
-with col1:
-    pass
-
-with col2:
-    prezzo = st.text_input("Prezzo Base (€/L)", "1.0000")
-
-with col3:
     st.write("")
-    st.button("📩 Invia a Tutti")
 
+    # TOPBAR
+    col1, col2, col3 = st.columns([2, 2, 1])
 
-st.write("---")
+    with col1:
+        pass
 
+    with col2:
+        st.text_input("Prezzo Base (€/L)", "1.0000")
 
-# =========================
-# KPI ROW
-# =========================
-c1, c2, c3 = st.columns(3)
+    with col3:
+        st.write("")
+        st.button("📩 Invia a Tutti")
 
-with c1:
-    st.markdown("""
-    <div class="kpi-card">
-        <div>
+    st.write("")
+
+    # KPI
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown("""
+        <div class="kpi">
             <div class="kpi-title">Clienti</div>
             <div class="kpi-value">0</div>
         </div>
-        <div class="icon-box" style="background:#e0e7ff;">👤</div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-with c2:
-    st.markdown("""
-    <div class="kpi-card">
-        <div>
+    with c2:
+        st.markdown("""
+        <div class="kpi">
             <div class="kpi-title">Margine Medio</div>
             <div class="kpi-value">€0.0000/L</div>
         </div>
-        <div class="icon-box" style="background:#ffedd5;">📈</div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-with c3:
-    st.markdown("""
-    <div class="kpi-card">
-        <div>
+    with c3:
+        st.markdown("""
+        <div class="kpi">
             <div class="kpi-title">Prezzo Medio</div>
             <div class="kpi-value">€0.0000/L</div>
         </div>
-        <div class="icon-box" style="background:#dcfce7;">💲</div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+
+    # EMPTY STATE
+    st.markdown("""
+    <div class="empty">
+        <div style="font-size:40px;">⛽</div>
+        <h3>Nessun cliente ancora</h3>
+        <p style="color:#6b7280;">Aggiungi il primo cliente per iniziare</p>
     </div>
     """, unsafe_allow_html=True)
 
 
-st.write("---")
-
+# =========================
+# CLIENTI
+# =========================
+elif st.session_state.page == "Clienti":
+    st.markdown('<div class="title">Clienti</div>', unsafe_allow_html=True)
+    st.write("Qui inseriremo tabella CRM vera (AgGrid / database)")
 
 # =========================
-# CLIENT SECTION
+# NUOVO CLIENTE
 # =========================
-st.markdown("### Clienti (0)")
+elif st.session_state.page == "Nuovo":
+    st.markdown('<div class="title">Nuovo Cliente</div>', unsafe_allow_html=True)
 
-st.markdown("""
-<div class="empty-box">
-    <div style="font-size:40px;">⛽</div>
-    <h3>Nessun cliente ancora</h3>
-    <p style="color:#6b7280;">
-        Aggiungi il primo cliente per iniziare a gestire le offerte.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+    with st.form("cliente"):
+        nome = st.text_input("Nome Cliente")
+        email = st.text_input("Email")
+        prezzo = st.number_input("Prezzo personalizzato", value=1.0)
+
+        submit = st.form_submit_button("Salva Cliente")
+
+        if submit:
+            st.success("Cliente salvato (demo)")
