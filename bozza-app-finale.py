@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 from supabase import create_client
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 
 # =========================
 # CONFIG
@@ -19,19 +23,51 @@ supabase = create_client(
     st.secrets["SUPABASE_KEY"]
 )
 
-def load():
+EMAIL = st.secrets["EMAIL_MITTENTE"]
+PASS = st.secrets["PASSWORD_APP"]
+
+# =========================
+# DATA
+# =========================
+def load_data():
     res = supabase.table("clienti").select("*").execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
 
-df = load()
+df = load_data()
 
 # =========================
-# UI IMPROVED (SAAS LEVEL)
+# EMAIL
+# =========================
+def send_email(to_email, nome, prezzo):
+
+    msg = MIMEMultipart()
+    msg["Subject"] = "Offerta Carburante"
+    msg["From"] = EMAIL
+    msg["To"] = to_email
+
+    body = f"""
+    Gentile {nome},
+
+    prezzo carburante: {prezzo:.3f} €/L
+
+    Cordiali saluti
+    """
+
+    msg.attach(MIMEText(body, "plain"))
+
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(EMAIL, PASS)
+    server.sendmail(EMAIL, to_email, msg.as_string())
+    server.quit()
+
+# =========================
+# UI STYLE (SAAS CLEAN)
 # =========================
 st.markdown("""
 <style>
 
-/* BACKGROUND */
+/* MAIN */
 .block-container {
     padding: 1.2rem 2rem;
     background: #f4f6fb;
@@ -39,49 +75,25 @@ st.markdown("""
 
 /* SIDEBAR */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0b1324 0%, #0f172a 100%);
+    background: #0f172a;
 }
 
 [data-testid="stSidebar"] * {
-    color: #e5e7eb;
-}
-
-/* LOGO */
-.logo {
-    font-size: 22px;
-    font-weight: 900;
-    padding: 10px 0 20px 0;
-}
-
-/* NAV BUTTON STYLE */
-.stButton>button {
-    width: 100%;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: transparent;
-    color: #e5e7eb;
-    padding: 10px;
-    transition: 0.2s;
-}
-
-.stButton>button:hover {
-    background: rgba(255,255,255,0.08);
-    transform: translateX(2px);
+    color: white;
 }
 
 /* HEADER */
 .header-title {
-    font-size: 32px;
+    font-size: 30px;
     font-weight: 900;
-    letter-spacing: -0.5px;
 }
 
 .subtext {
     color: #6b7280;
-    margin-top: -6px;
+    margin-top: -5px;
 }
 
-/* KPI CARD (MODERN SAAS) */
+/* KPI */
 .kpi-card {
     background: white;
     border-radius: 18px;
@@ -90,13 +102,6 @@ st.markdown("""
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: 0.2s;
-    border: 1px solid rgba(0,0,0,0.04);
-}
-
-.kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 35px rgba(0,0,0,0.08);
 }
 
 .kpi-title {
@@ -107,7 +112,6 @@ st.markdown("""
 .kpi-value {
     font-size: 24px;
     font-weight: 900;
-    color: #111827;
 }
 
 .icon-box {
@@ -117,47 +121,32 @@ st.markdown("""
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
 }
 
-/* CLIENT CARD */
+/* CARD CLIENT */
 .client-card {
     background: white;
-    padding: 16px;
-    border-radius: 16px;
+    padding: 14px;
+    border-radius: 14px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.05);
-    border: 1px solid rgba(0,0,0,0.04);
     margin-bottom: 10px;
-    transition: 0.2s;
-}
-
-.client-card:hover {
-    transform: scale(1.01);
-}
-
-/* EMPTY STATE */
-.empty-box {
-    background: white;
-    border-radius: 18px;
-    padding: 70px;
-    text-align: center;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-/* INPUT */
-input {
-    border-radius: 12px !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# SIDEBAR (MOLTO PIÙ SAAS)
+# SESSION NAV
+# =========================
+if "page" not in st.session_state:
+    st.session_state.page = "dashboard"
+
+# =========================
+# SIDEBAR
 # =========================
 with st.sidebar:
 
-    st.markdown("<div class='logo'>⛽ FuelCRM</div>", unsafe_allow_html=True)
+    st.markdown("## ⛽ FuelCRM")
 
     if st.button("📊 Dashboard"):
         st.session_state.page = "dashboard"
@@ -170,14 +159,14 @@ with st.sidebar:
 
     st.write("")
 
-    if st.button("🚪 Logout"):
+    if st.button("🚪 Esci"):
         st.stop()
 
 # =========================
 # HEADER
 # =========================
-st.markdown('<div class="header-title">Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtext">Gestione prezzi e invio offerte carburante</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-title">FuelCRM</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtext">Gestione clienti e offerte carburante</div>', unsafe_allow_html=True)
 
 # =========================
 # DASHBOARD
@@ -187,11 +176,10 @@ if st.session_state.page == "dashboard":
     col1, col2, col3 = st.columns([3,1,1])
 
     with col2:
-        base = st.text_input("Prezzo Base €/L", "1.0000")
+        base_price = st.text_input("Prezzo Base", "1.000")
 
     with col3:
-        st.write("")
-        st.button("📩 Invia")
+        st.button("📩 Invia a tutti")
 
     st.write("---")
 
@@ -239,18 +227,57 @@ if st.session_state.page == "dashboard":
     st.markdown("### Clienti")
 
     if df.empty:
-        st.markdown("""
-        <div class="empty-box">
-            <h2>⛽ Nessun cliente</h2>
-            <p style="color:#6b7280;">Aggiungi il primo cliente per iniziare</p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.info("Nessun cliente ancora")
     else:
         for _, c in df.iterrows():
-            st.markdown(f"""
-            <div class="client-card">
-                <b>{c['nome']}</b><br>
-                <span style="color:#6b7280">{c['email']}</span>
-            </div>
-            """, unsafe_allow_html=True)
+
+            col1, col2 = st.columns([3,1])
+
+            with col1:
+                st.markdown(f"""
+                <div class="client-card">
+                    <b>{c['nome']}</b><br>
+                    {c['email']}
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                if st.button("📧", key=f"mail_{c['id']}"):
+                    prezzo_send = 1 + float(c["margine"])
+                    send_email(c["email"], c["nome"], prezzo_send)
+                    st.success("Email inviata")
+
+# =========================
+# CLIENTI
+# =========================
+elif st.session_state.page == "clienti":
+
+    st.markdown("### Clienti")
+
+    for _, c in df.iterrows():
+        st.write(f"**{c['nome']}** - {c['email']}")
+
+# =========================
+# NUOVO CLIENTE
+# =========================
+elif st.session_state.page == "new":
+
+    st.markdown("### Nuovo Cliente")
+
+    with st.form("form"):
+
+        nome = st.text_input("Nome")
+        email = st.text_input("Email")
+        margine = st.number_input("Margine", 0.0, step=0.001)
+
+        submit = st.form_submit_button("Salva")
+
+        if submit:
+            supabase.table("clienti").insert({
+                "nome": nome,
+                "email": email,
+                "margine": margine
+            }).execute()
+
+            st.success("Cliente creato")
+            st.rerun()
