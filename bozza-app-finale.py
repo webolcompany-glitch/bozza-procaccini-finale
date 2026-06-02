@@ -11,8 +11,66 @@ supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_KEY"]
 )
-st.set_page_config(page_title="Fuel SaaS", layout="wide")
+st.set_page_config(
+    page_title="FuelCRM",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+st.markdown("""
+<style>
 
+/* MAIN */
+.block-container{
+    padding:1.5rem 2rem;
+    background:#f6f7fb;
+}
+
+/* SIDEBAR */
+[data-testid="stSidebar"]{
+    background:#0f172a;
+}
+
+[data-testid="stSidebar"] *{
+    color:white;
+}
+
+.header-title{
+    font-size:28px;
+    font-weight:800;
+}
+
+.subtext{
+    color:#6b7280;
+    margin-top:-8px;
+}
+
+.kpi-card{
+    background:white;
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 6px 20px rgba(0,0,0,.06);
+}
+
+.kpi-title{
+    color:#6b7280;
+    font-size:14px;
+}
+
+.kpi-value{
+    font-size:22px;
+    font-weight:800;
+}
+
+.client-card{
+    background:white;
+    padding:18px;
+    border-radius:16px;
+    box-shadow:0 6px 20px rgba(0,0,0,.05);
+    margin-bottom:12px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 # =========================
 # 🏢 AZIENDA
 # =========================
@@ -249,40 +307,60 @@ df = st.session_state.clienti
 # =========================
 # NAV
 # =========================
-c1, c2, c3 = st.columns(3)
+with st.sidebar:
 
-with c1:
+    st.markdown("## ⛽ FuelCRM")
+
     if st.button("📊 Dashboard", use_container_width=True):
         st.session_state.page = "dashboard"
 
-with c2:
     if st.button("👤 Clienti", use_container_width=True):
         st.session_state.page = "clienti"
 
-with c3:
-    if st.button("➕ Nuovo", use_container_width=True):
+    if st.button("➕ Nuovo Cliente", use_container_width=True):
         st.session_state.page = "cliente"
-
-st.divider()
 
 # =========================
 # CARD
 # =========================
-def card(title, value):
+def card(title, value, icon, color):
     return f"""
-    <div style="padding:14px;border-radius:14px;background:#111827;
-    color:white;text-align:center;margin:6px 0;">
-        <div style="font-size:12px;opacity:0.7;">{title}</div>
-        <div style="font-size:20px;font-weight:600">{value}</div>
+    <div class="kpi-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div class="kpi-title">{title}</div>
+                <div class="kpi-value">{value}</div>
+            </div>
+
+            <div style="
+                width:42px;
+                height:42px;
+                border-radius:12px;
+                background:{color};
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:18px;">
+                {icon}
+            </div>
+
+        </div>
     </div>
     """
-
 # =========================================================
 # 📊 DASHBOARD
 # =========================================================
 if st.session_state.page == "dashboard":
 
-    st.markdown("## ⛽ Dashboard operativa")
+    st.markdown(
+    '<div class="header-title">Dashboard</div>',
+    unsafe_allow_html=True
+    )
+
+    st.markdown(
+    '<div class="subtext">Gestione prezzi e invio offerte</div>',
+    unsafe_allow_html=True
+    )
 
     prezzo_base = st.number_input(
         "⛽ Prezzo base",
@@ -301,22 +379,51 @@ if st.session_state.page == "dashboard":
         if not df.empty else prezzo_base
     )
 
-    c1, c2 = st.columns(2)
-    c3, c4 = st.columns(2)
+    c1, c2, c3, c4 = st.columns(4)
 
-    with c1:
-        st.markdown(card("⛽ Base", format_euro(prezzo_base)), unsafe_allow_html=True)
+with c1:
+    st.markdown(
+        card(
+            "Prezzo Base",
+            f"€ {format_euro(prezzo_base)}",
+            "⛽",
+            "#dbeafe"
+        ),
+        unsafe_allow_html=True
+    )
 
-    with c2:
-        st.markdown(card("👤 Clienti", clienti_count), unsafe_allow_html=True)
+with c2:
+    st.markdown(
+        card(
+            "Clienti",
+            clienti_count,
+            "👤",
+            "#e0e7ff"
+        ),
+        unsafe_allow_html=True
+    )
 
-    with c3:
-        st.markdown(card("📊 Margine medio", format_euro(media_margine)), unsafe_allow_html=True)
+with c3:
+    st.markdown(
+        card(
+            "Margine Medio",
+            f"€ {format_euro(media_margine)}",
+            "📈",
+            "#ffedd5"
+        ),
+        unsafe_allow_html=True
+    )
 
-    with c4:
-        st.markdown(card("💰 Prezzo medio", format_euro(prezzo_medio)), unsafe_allow_html=True)
-
-    st.divider()
+with c4:
+    st.markdown(
+        card(
+            "Prezzo Medio",
+            f"€ {format_euro(prezzo_medio)}",
+            "💰",
+            "#dcfce7"
+        ),
+        unsafe_allow_html=True
+    )
 
     st.markdown("### ✉️ Messaggio Email")
     st.info("""
@@ -437,13 +544,17 @@ elif st.session_state.page == "clienti":
         ultimo_txt = "Nessun invio" if pd.isna(c["UltimoPrezzo"]) else format_euro(c["UltimoPrezzo"]) + " €/L"
 
         st.markdown(f"""
-        ### 👤 {c['Nome']}
-        📄 {c['PIVA']}  
-        📞 {c['Telefono']}  
-        💰 Ultimo: {ultimo_txt}
-        """)
+        <div class="client-card">
 
-        col1, col2 = st.columns(2)
+        <h4>👤 {c['Nome']}</h4>
+
+        📄 P.IVA: {c['PIVA']}<br>
+        📞 {c['Telefono']}<br>
+        💰 Prezzo Oggi: {format_euro(prezzo)} €/L<br>
+        📌 Ultimo Invio: {ultimo_txt}
+
+        </div>
+        """, unsafe_allow_html=True)
 
         with col1:
             if st.button("✏️ Modifica", key=f"edit_{c['ID']}"):
