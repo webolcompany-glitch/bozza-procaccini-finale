@@ -120,7 +120,6 @@ def genera_testo_offerte(cliente, prezzi_globali, formato="html"):
 def filtra_clienti(df, search, base_filter="Tutte"):
     res = df
     if base_filter != "Tutte":
-        # Uso get() o controllo colonne per evitare errori su dataframe vuoti
         if "Base" in res.columns:
             res = res[res["Base"] == base_filter]
     
@@ -170,13 +169,19 @@ def save_data(df):
     if records:
         supabase.table("clienti").upsert(records).execute()
 
+# 🆕 NUOVA FUNZIONE PER ELIMINARE CORRETTAMENTE DA SUPABASE
+def delete_client(client_id):
+    try:
+        supabase.table("clienti").delete().eq("id", client_id).execute()
+    except Exception as e:
+        st.error(f"Errore durante l'eliminazione nel database: {e}")
+
 # =========================
 # INIT SESSION STATE
 # =========================
 if "clienti" not in st.session_state: 
     st.session_state.clienti = load_data()
 
-# 🛡️ PATCH DI SICUREZZA: Se c'era una vecchia cache in memoria, forza la creazione delle colonne mancanti
 if "Base" not in st.session_state.clienti.columns:
     st.session_state.clienti["Base"] = "Nessuna"
 if "Prodotti" not in st.session_state.clienti.columns:
@@ -375,152 +380,4 @@ if st.session_state.page == "dashboard":
         st.markdown('<div class="empty-box"><div style="font-size:40px;">⛽</div><h3>Nessun cliente trovato</h3></div>', unsafe_allow_html=True)
     else:
         for _, c in df_view.iterrows():
-            ultimo_txt = c["UltimoPrezzo"] if pd.notna(c["UltimoPrezzo"]) else "Nessun invio"
-            prod_lista = c.get("Prodotti", "")
-
-            # Modificato con .get() per prevenire crash su colonne vuote in cache
-            st.markdown(f"""
-            <div class="client-card" style="padding:15px; margin-bottom: 0px;">
-                <h4 style="margin:0;">👤 {c.get('Nome', 'Sconosciuto')} <span style="font-size:14px; font-weight:normal; color:#6b7280;">(Base: {c.get('Base', 'Nessuna')})</span></h4>
-                <div style="font-size:14px; margin-top:5px;">
-                    🛍️ Prodotti: <b>{prod_lista}</b><br>
-                    📌 Ultimo Invio: {ultimo_txt}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                import urllib.parse
-                tel = str(c.get("Telefono", "")).replace("+", "").replace(" ", "")
-                data = datetime.now().strftime("%d/%m/%Y")
-                wa_offerte = genera_testo_offerte(c, st.session_state.prezzi_base, formato="testo")
-                msg = st.session_state.wa_template.replace("{elenco_offerte}", wa_offerte).replace("{nome}", c.get("Nome", "")).replace("{data}", data)
-                msg_encoded = urllib.parse.quote(msg)
-                st.link_button("📲 Invia WhatsApp", f"https://wa.me/{tel}?text={msg_encoded}")
-
-            with col2:
-                if c.get("Email") and pd.notna(c.get("Email")):
-                    if st.button("📧 Invia Email", key=f"mail_{c['ID']}"):
-                        modal_anteprima_singola(c, st.session_state.prezzi_base, st.session_state.email_template)
-
-            with col3:
-                if st.button("🗑️ Elimina", key=f"del_{c['ID']}"):
-                    st.session_state.clienti = df[df["ID"] != c["ID"]]
-                    save_data(st.session_state.clienti)
-                    st.rerun()
-            st.write("---")
-
-# =========================================================
-# 👤 CLIENTI PAGE
-# =========================================================
-elif st.session_state.page == "clienti":
-
-    st.markdown('<div class="header-title">👤 Gestione Clienti</div>', unsafe_allow_html=True)
-
-    col_filtro1, col_filtro2 = st.columns(2)
-    with col_filtro1: base_sel = st.selectbox("📍 Filtra per Base", basi_esistenti, key="clienti_base")
-    with col_filtro2: search = st.text_input("🔍 Cerca cliente (Nome, P.IVA, Tel)")
-    
-    df_view = filtra_clienti(df, search, base_sel)
-
-    if df_view.empty:
-         st.markdown('<div class="empty-box"><div style="font-size:40px;">👥</div><h3>Lista vuota</h3></div>', unsafe_allow_html=True)
-    else:
-        for _, c in df_view.iterrows():
-            ultimo_txt = c["UltimoPrezzo"] if pd.notna(c["UltimoPrezzo"]) else "Nessun invio"
-
-            # Modificato con .get() per prevenire KeyError
-            st.markdown(f"""
-            <div class="client-card">
-            <h4 style="margin-top:0;">👤 {c.get('Nome', 'Sconosciuto')} <span style="font-size:14px; font-weight:normal; color:#6b7280;">(Base: {c.get('Base', 'Nessuna')})</span></h4>
-            📄 P.IVA: {c.get('PIVA', '')}<br>
-            📞 {c.get('Telefono', '')}<br>
-            🛍️ Prodotti Richiesti: <b>{c.get('Prodotti', 'Nessun Prodotto')}</b><br>
-            📌 Stato Offerte: <span style="color:#6b7280;">{ultimo_txt}</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✏️ Modifica", key=f"edit_{c['ID']}"):
-                    st.session_state.edit_id = c["ID"]
-                    st.session_state.page = "cliente"
-                    st.rerun() 
-            with col2:
-                if st.button("🗑️ Elimina", key=f"del_list_{c['ID']}"):
-                    st.session_state.clienti = df[df["ID"] != c["ID"]]
-                    save_data(st.session_state.clienti)
-                    st.rerun()
-
-# =========================================================
-# ➕ CLIENTE PAGE (NUOVO / MODIFICA)
-# =========================================================
-elif st.session_state.page == "cliente":
-
-    editing = st.session_state.edit_id is not None
-    titolo_pagina = "Modifica Cliente" if editing else "Nuovo Cliente"
-    
-    st.markdown(f'<div class="header-title">{"✏️" if editing else "➕"} {titolo_pagina}</div>', unsafe_allow_html=True)
-
-    if editing:
-        c = df[df["ID"] == st.session_state.edit_id].iloc[0]
-        prod_selezionati = [p.strip() for p in str(c.get("Prodotti", "")).split(",")] if pd.notna(c.get("Prodotti")) else ["Gasolio Autotrazione"]
-        base_attuale = c.get("Base", "Nessuna")
-    else:
-        c = {"Nome":"","PIVA":"","Telefono":"","Email":"","Margine":0.0,"Trasporto":0.0}
-        prod_selezionati = ["Gasolio Autotrazione"]
-        base_attuale = "Nessuna"
-
-    with st.container():
-        st.markdown('<div class="client-card">', unsafe_allow_html=True)
-        
-        st.subheader("Dati Principali")
-        nome = st.text_input("Nome Ragione Sociale", value=c.get("Nome", ""))
-        piva = st.text_input("Partita IVA", value=c.get("PIVA", ""))
-        tel = st.text_input("Telefono", value=c.get("Telefono", ""))
-        email = st.text_input("Email", value=c.get("Email", ""), placeholder="es: principale@mail.com, cc@mail.com")
-        
-        st.write("---")
-        st.subheader("Configurazione Commerciale")
-        base = st.text_input("📍 Base di riferimento (es. Napoli, Roma, Taranto)", value=base_attuale)
-        
-        prodotti = st.multiselect(
-            "🛍️ Prodotti Acquistati dal Cliente",
-            options=TIPI_CARBURANTE,
-            default=[p for p in prod_selezionati if p in TIPI_CARBURANTE]
-        )
-        
-        col_m, col_t = st.columns(2)
-        with col_m: margine = st.number_input("Margine (€/L)", value=float(c.get("Margine", 0.0)), step=0.001, format="%.3f")
-        with col_t: trasporto = st.number_input("Trasporto (€/L)", value=float(c.get("Trasporto", 0.0)), step=0.001, format="%.3f")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.button("💾 Salva Cliente", type="primary"):
-        prodotti_str = ", ".join(prodotti)
-        if not base.strip(): base = "Nessuna"
-
-        if editing:
-            idx = st.session_state.clienti["ID"] == st.session_state.edit_id
-            st.session_state.clienti.loc[idx, "Nome"] = nome
-            st.session_state.clienti.loc[idx, "PIVA"] = piva
-            st.session_state.clienti.loc[idx, "Telefono"] = tel
-            st.session_state.clienti.loc[idx, "Email"] = email
-            st.session_state.clienti.loc[idx, "Margine"] = margine
-            st.session_state.clienti.loc[idx, "Trasporto"] = trasporto
-            st.session_state.clienti.loc[idx, "Prodotti"] = prodotti_str
-            st.session_state.clienti.loc[idx, "Base"] = base
-            st.session_state.edit_id = None
-        else:
-            new_id = 1 if df.empty else int(df["ID"].max()) + 1
-            new = pd.DataFrame([{
-                "ID": new_id, "Nome": nome, "PIVA": piva, "Telefono": tel, "Email": email,
-                "Margine": margine, "Trasporto": trasporto, "UltimoPrezzo": None,
-                "Prodotti": prodotti_str, "Base": base
-            }])
-            st.session_state.clienti = pd.concat([df, new], ignore_index=True)
-
-        save_data(st.session_state.clienti)
-        st.success("Cliente salvato con successo!")
-        st.session_state.page = "clienti"
-        st.rerun()
+            ultimo_txt = c["UltimoPrezzo
