@@ -1,12 +1,3 @@
-L'errore `SyntaxError: invalid syntax` sulla riga di `elif st.session_state.page == "clienti":` è causato da un **problema di indentazione (spaziature)** nella sezione precedente.
-
-Nello specifico, tutto il blocco della "DASHBOARD" a partire da `with c1:` in poi aveva perso l'indentazione. Questo ha fatto credere a Python che il blocco `if st.session_state.page == "dashboard":` fosse terminato in anticipo, rendendo l'istruzione `elif` successiva orfana (senza un `if` di riferimento) e generando l'errore di sintassi.
-
-Inoltre, nel ciclo della pagina "clienti", mancavano le definizioni per `prezzo`, `col1` e `col2`, che avrebbero generato un `NameError` subito dopo.
-
-Ecco il codice completo e corretto, uguale al tuo ma con le indentazioni e le colonne sistemate per funzionare perfettamente:
-
-```python
 import streamlit as st
 import pandas as pd
 import os
