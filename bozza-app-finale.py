@@ -54,7 +54,7 @@ st.markdown("""
 # =========================
 # 🏢 AZIENDA
 # =========================
-azienda = st.query_params.get("azienda", "demo")
+azienda = st.query_params.get("azienda", "PROCACCINI")
 if isinstance(azienda, list):
     azienda = azienda[0]
 
