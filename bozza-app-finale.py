@@ -638,5 +638,3 @@ elif st.session_state.page == "cliente":
         st.success("Salvato")
         st.session_state.page = "clienti"
         st.rerun()
-
-```
