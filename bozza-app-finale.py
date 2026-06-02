@@ -35,7 +35,7 @@ st.markdown("""
 
 /* ========== SIDEBAR ========== */
 [data-testid="stSidebar"] {
-    background-color: #f59e0b;
+    background-color: #0f172a;
 }
 
 [data-testid="stSidebar"] * {
