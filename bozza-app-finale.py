@@ -10,7 +10,6 @@ from supabase import create_client
 # =========================
 # IMPOSTAZIONI GLOBALI
 # =========================
-# 🔄 LISTA PRODOTTI AGGIORNATA
 TIPI_CARBURANTE = ["Gasolio Autotrazione", "Gasolio Riscaldamento", "Gasolio Agricolo", "Benzina"]
 
 st.set_page_config(
@@ -57,8 +56,6 @@ st.markdown("""
 azienda = st.query_params.get("azienda", "demo")
 if isinstance(azienda, list):
     azienda = azienda[0]
-
-FILE = f"clienti_{azienda}.csv"
 
 # =========================
 # 📧 EMAIL & UTILS
@@ -109,7 +106,6 @@ def genera_testo_offerte(cliente, prezzi_globali, formato="html"):
     
     righe = []
     for p in prodotti:
-        # Se il prodotto non è nei prezzi base globali, usa 0
         p_base = prezzi_globali.get(p, 0.0) 
         p_fin = calc_price(p_base, cliente.get("Margine", 0), cliente.get("Trasporto", 0))
         
@@ -124,7 +120,9 @@ def genera_testo_offerte(cliente, prezzi_globali, formato="html"):
 def filtra_clienti(df, search, base_filter="Tutte"):
     res = df
     if base_filter != "Tutte":
-        res = res[res["Base"] == base_filter]
+        # Uso get() o controllo colonne per evitare errori su dataframe vuoti
+        if "Base" in res.columns:
+            res = res[res["Base"] == base_filter]
     
     if search:
         res = res[
@@ -175,12 +173,19 @@ def save_data(df):
 # =========================
 # INIT SESSION STATE
 # =========================
-if "clienti" not in st.session_state: st.session_state.clienti = load_data()
+if "clienti" not in st.session_state: 
+    st.session_state.clienti = load_data()
+
+# 🛡️ PATCH DI SICUREZZA: Se c'era una vecchia cache in memoria, forza la creazione delle colonne mancanti
+if "Base" not in st.session_state.clienti.columns:
+    st.session_state.clienti["Base"] = "Nessuna"
+if "Prodotti" not in st.session_state.clienti.columns:
+    st.session_state.clienti["Prodotti"] = "Gasolio Autotrazione"
+
 if "page" not in st.session_state: st.session_state.page = "dashboard"
 if "edit_id" not in st.session_state: st.session_state.edit_id = None
 if "show_success" not in st.session_state: st.session_state.show_success = False
 
-# Dizionario per i prezzi base globali
 if "prezzi_base" not in st.session_state:
     st.session_state.prezzi_base = {p: 1.000 for p in TIPI_CARBURANTE}
 
@@ -224,7 +229,6 @@ Enrico Procaccini - 3892159094
 
 df = st.session_state.clienti
 
-# Estrai la lista delle basi univoche dai dati (per i filtri)
 basi_esistenti = ["Tutte"]
 if not df.empty and "Base" in df.columns:
     basi_uniche = df["Base"].dropna().unique().tolist()
@@ -264,7 +268,6 @@ if st.session_state.page == "dashboard":
         st.success(st.session_state.show_success)
         st.session_state.show_success = False 
 
-    # --- Inserimento Prezzi Base Globali (Multipli) ---
     st.markdown("### ⛽ Prezzi Base Odierni (€/L)")
     cols = st.columns(len(TIPI_CARBURANTE))
     for i, prodotto in enumerate(TIPI_CARBURANTE):
@@ -276,7 +279,6 @@ if st.session_state.page == "dashboard":
             )
             st.session_state.prezzi_base[prodotto] = nuovo_prezzo
 
-    # --- KPI Generali ---
     clienti_count = len(df)
     media_margine = round(df["Margine"].mean(), 3) if not df.empty else 0
     c1, c2 = st.columns(2)
@@ -325,11 +327,11 @@ if st.session_state.page == "dashboard":
 
     @st.dialog("👁️ Anteprima Email - Singolo Cliente")
     def modal_anteprima_singola(c_singolo, dict_prezzi, template_msg):
-        st.write(f"Invia a: **{c_singolo['Nome']}** ({c_singolo['Email']})")
+        st.write(f"Invia a: **{c_singolo.get('Nome', 'Sconosciuto')}** ({c_singolo.get('Email', '')})")
         
         html_offerte = genera_testo_offerte(c_singolo, dict_prezzi, formato="html")
         data_es = datetime.now().strftime("%d/%m/%Y")
-        testo_es = template_msg.replace("{elenco_offerte}", html_offerte).replace("{nome}", c_singolo["Nome"]).replace("{data}", data_es)
+        testo_es = template_msg.replace("{elenco_offerte}", html_offerte).replace("{nome}", c_singolo.get("Nome", "")).replace("{data}", data_es)
         
         st.markdown(f'<div style="background:white; padding:20px; border-radius:10px; border:1px solid #e2e8f0; max-height: 350px; overflow-y: auto; font-size: 14px;">{testo_es}</div>', unsafe_allow_html=True)
         st.write("---")
@@ -376,9 +378,10 @@ if st.session_state.page == "dashboard":
             ultimo_txt = c["UltimoPrezzo"] if pd.notna(c["UltimoPrezzo"]) else "Nessun invio"
             prod_lista = c.get("Prodotti", "")
 
+            # Modificato con .get() per prevenire crash su colonne vuote in cache
             st.markdown(f"""
             <div class="client-card" style="padding:15px; margin-bottom: 0px;">
-                <h4 style="margin:0;">👤 {c['Nome']} <span style="font-size:14px; font-weight:normal; color:#6b7280;">(Base: {c['Base']})</span></h4>
+                <h4 style="margin:0;">👤 {c.get('Nome', 'Sconosciuto')} <span style="font-size:14px; font-weight:normal; color:#6b7280;">(Base: {c.get('Base', 'Nessuna')})</span></h4>
                 <div style="font-size:14px; margin-top:5px;">
                     🛍️ Prodotti: <b>{prod_lista}</b><br>
                     📌 Ultimo Invio: {ultimo_txt}
@@ -389,15 +392,15 @@ if st.session_state.page == "dashboard":
             col1, col2, col3 = st.columns(3)
             with col1:
                 import urllib.parse
-                tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
+                tel = str(c.get("Telefono", "")).replace("+", "").replace(" ", "")
                 data = datetime.now().strftime("%d/%m/%Y")
                 wa_offerte = genera_testo_offerte(c, st.session_state.prezzi_base, formato="testo")
-                msg = st.session_state.wa_template.replace("{elenco_offerte}", wa_offerte).replace("{nome}", c["Nome"]).replace("{data}", data)
+                msg = st.session_state.wa_template.replace("{elenco_offerte}", wa_offerte).replace("{nome}", c.get("Nome", "")).replace("{data}", data)
                 msg_encoded = urllib.parse.quote(msg)
                 st.link_button("📲 Invia WhatsApp", f"https://wa.me/{tel}?text={msg_encoded}")
 
             with col2:
-                if c["Email"] and pd.notna(c["Email"]):
+                if c.get("Email") and pd.notna(c.get("Email")):
                     if st.button("📧 Invia Email", key=f"mail_{c['ID']}"):
                         modal_anteprima_singola(c, st.session_state.prezzi_base, st.session_state.email_template)
 
@@ -427,12 +430,13 @@ elif st.session_state.page == "clienti":
         for _, c in df_view.iterrows():
             ultimo_txt = c["UltimoPrezzo"] if pd.notna(c["UltimoPrezzo"]) else "Nessun invio"
 
+            # Modificato con .get() per prevenire KeyError
             st.markdown(f"""
             <div class="client-card">
-            <h4 style="margin-top:0;">👤 {c['Nome']} <span style="font-size:14px; font-weight:normal; color:#6b7280;">(Base: {c['Base']})</span></h4>
-            📄 P.IVA: {c['PIVA']}<br>
-            📞 {c['Telefono']}<br>
-            🛍️ Prodotti Richiesti: <b>{c['Prodotti']}</b><br>
+            <h4 style="margin-top:0;">👤 {c.get('Nome', 'Sconosciuto')} <span style="font-size:14px; font-weight:normal; color:#6b7280;">(Base: {c.get('Base', 'Nessuna')})</span></h4>
+            📄 P.IVA: {c.get('PIVA', '')}<br>
+            📞 {c.get('Telefono', '')}<br>
+            🛍️ Prodotti Richiesti: <b>{c.get('Prodotti', 'Nessun Prodotto')}</b><br>
             📌 Stato Offerte: <span style="color:#6b7280;">{ultimo_txt}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -472,10 +476,10 @@ elif st.session_state.page == "cliente":
         st.markdown('<div class="client-card">', unsafe_allow_html=True)
         
         st.subheader("Dati Principali")
-        nome = st.text_input("Nome Ragione Sociale", value=c["Nome"])
-        piva = st.text_input("Partita IVA", value=c["PIVA"])
-        tel = st.text_input("Telefono", value=c["Telefono"])
-        email = st.text_input("Email", value=c["Email"], placeholder="es: principale@mail.com, cc@mail.com")
+        nome = st.text_input("Nome Ragione Sociale", value=c.get("Nome", ""))
+        piva = st.text_input("Partita IVA", value=c.get("PIVA", ""))
+        tel = st.text_input("Telefono", value=c.get("Telefono", ""))
+        email = st.text_input("Email", value=c.get("Email", ""), placeholder="es: principale@mail.com, cc@mail.com")
         
         st.write("---")
         st.subheader("Configurazione Commerciale")
@@ -488,8 +492,8 @@ elif st.session_state.page == "cliente":
         )
         
         col_m, col_t = st.columns(2)
-        with col_m: margine = st.number_input("Margine (€/L)", value=float(c["Margine"]), step=0.001, format="%.3f")
-        with col_t: trasporto = st.number_input("Trasporto (€/L)", value=float(c["Trasporto"]), step=0.001, format="%.3f")
+        with col_m: margine = st.number_input("Margine (€/L)", value=float(c.get("Margine", 0.0)), step=0.001, format="%.3f")
+        with col_t: trasporto = st.number_input("Trasporto (€/L)", value=float(c.get("Trasporto", 0.0)), step=0.001, format="%.3f")
         st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("💾 Salva Cliente", type="primary"):
