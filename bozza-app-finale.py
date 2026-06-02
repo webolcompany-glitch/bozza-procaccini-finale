@@ -7,11 +7,6 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from supabase import create_client
 
-supabase = create_client(
-    st.secrets["SUPABASE_URL"],
-    st.secrets["SUPABASE_KEY"]
-)
-
 # =========================
 # CONFIG
 # =========================
@@ -19,6 +14,11 @@ st.set_page_config(
     page_title="FuelCRM",
     layout="wide",
     initial_sidebar_state="expanded"
+)
+
+supabase = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"]
 )
 
 # =========================
@@ -52,18 +52,17 @@ st.markdown("""
 
 /* ========== STILE TASTI SIDEBAR ========== */
 [data-testid="stSidebar"] .stButton > button {
-    background-color: #1e293b; /* Colore di sfondo del tasto a riposo (blu scuro) */
-    color: #ffffff; /* Colore del testo */
-    border: 1px solid #334155; /* Bordo sottile */
-    border-radius: 10px; /* Angoli arrotondati */
-    transition: all 0.3s ease; /* Effetto morbido al passaggio del mouse */
+    background-color: #1e293b; 
+    color: #ffffff; 
+    border: 1px solid #334155; 
+    border-radius: 10px; 
+    transition: all 0.3s ease; 
 }
 
-/* Effetto quando passi il mouse sopra il tasto (HOVER) */
 [data-testid="stSidebar"] .stButton > button:hover {
-    background-color: #f59e0b; /* Colore di sfondo al passaggio del mouse (arancione SaaS) */
-    color: #000000 !important; /* Colore del testo al passaggio del mouse (nero) */
-    border-color: #f59e0b; /* Cambia anche il bordo */
+    background-color: #f59e0b; 
+    color: #000000 !important; 
+    border-color: #f59e0b; 
 }
 
 /* ========== TOP HEADER ========== */
@@ -235,7 +234,6 @@ def load_data():
     return df
 
 def save_data(df):
-
     records = df.rename(columns={
         "ID":"id",
         "Nome":"nome",
@@ -264,6 +262,9 @@ if "edit_id" not in st.session_state:
 
 if "prezzo_base" not in st.session_state:
     st.session_state.prezzo_base = 1.000
+
+if "show_success" not in st.session_state:
+    st.session_state.show_success = False
 
 if "email_template" not in st.session_state:
     st.session_state.email_template = """<div style="font-family: Serif, Arial, sans-serif; font-size:14px; line-height:1.5; color:#000000;">
@@ -317,6 +318,9 @@ with st.sidebar:
 
     if st.button("➕ Nuovo Cliente", use_container_width=True):
         st.session_state.page = "cliente"
+        
+    if st.button("⚙️ Impostazioni", use_container_width=True):
+        st.session_state.page = "impostazioni"
 
 # =========================
 # CARD COMPONENT
@@ -341,6 +345,11 @@ if st.session_state.page == "dashboard":
 
     st.markdown('<div class="header-title">Dashboard</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtext">Gestione prezzi e invio offerte</div>', unsafe_allow_html=True)
+
+    # --- GESTIONE MESSAGGI DI SUCCESSO DOPO IL POP-UP ---
+    if st.session_state.get("show_success"):
+        st.success(st.session_state.show_success)
+        st.session_state.show_success = False 
 
     prezzo_base = st.number_input(
         "⛽ Prezzo base",
@@ -368,33 +377,95 @@ if st.session_state.page == "dashboard":
     with c4:
         st.markdown(card("Prezzo Medio", f"€ {format_euro(prezzo_medio)}", "💰", "#dcfce7"), unsafe_allow_html=True)
 
+    # ==========================================
+    # 🧩 FUNZIONI POP-UP (MODALS) PER ANTEPRIMA
+    # ==========================================
+    @st.dialog("👁️ Anteprima e Conferma Invio - Tutti")
+    def modal_anteprima_tutti(df_clienti, p_base, template_msg):
+        st.write("Ecco come apparirà l'email (esempio basato sul primo cliente utile):")
+        
+        preview_c = None
+        for _, cl in df_clienti.iterrows():
+            if pd.notna(cl["Email"]) and str(cl["Email"]).strip() != "":
+                preview_c = cl
+                break
+                
+        if preview_c is not None:
+            prezzo_es = calc_price(p_base, preview_c["Margine"], preview_c["Trasporto"])
+            data_es = datetime.now().strftime("%d/%m/%Y")
+            testo_es = template_msg.replace("{prezzo}", f"{prezzo_es:.3f}").replace("{nome}", preview_c["Nome"]).replace("{data}", data_es)
+            
+            st.markdown(f'<div style="background:white; padding:20px; border-radius:10px; border:1px solid #e2e8f0; max-height: 350px; overflow-y: auto; font-size: 14px;">{testo_es}</div>', unsafe_allow_html=True)
+            
+            st.write("---")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("❌ Annulla", use_container_width=True):
+                    st.rerun() 
+            with col_b:
+                if st.button("🚀 Conferma e Invia a Tutti", type="primary", use_container_width=True):
+                    count = 0
+                    for _, c_all in df_clienti.iterrows():
+                        if pd.notna(c_all["Email"]) and str(c_all["Email"]).strip() != "":
+                            p = calc_price(p_base, c_all["Margine"], c_all["Trasporto"])
+                            invia_email(c_all["Email"], p, template_msg, c_all["Nome"])
+                            st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_all["ID"], "UltimoPrezzo"] = p
+                            count += 1
+                    save_data(st.session_state.clienti)
+                    st.session_state.show_success = f"✅ Email inviate con successo a {count} clienti!"
+                    st.rerun()
+        else:
+            st.warning("Nessun cliente con email valida trovato.")
+
+
+    @st.dialog("👁️ Anteprima Email - Singolo Cliente")
+    def modal_anteprima_singola(c_singolo, p_base, template_msg):
+        st.write(f"Stai per inviare questa email a **{c_singolo['Nome']}** ({c_singolo['Email']}):")
+        
+        prezzo_es = calc_price(p_base, c_singolo["Margine"], c_singolo["Trasporto"])
+        data_es = datetime.now().strftime("%d/%m/%Y")
+        testo_es = template_msg.replace("{prezzo}", f"{prezzo_es:.3f}").replace("{nome}", c_singolo["Nome"]).replace("{data}", data_es)
+        
+        st.markdown(f'<div style="background:white; padding:20px; border-radius:10px; border:1px solid #e2e8f0; max-height: 350px; overflow-y: auto; font-size: 14px;">{testo_es}</div>', unsafe_allow_html=True)
+        
+        st.write("---")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("❌ Annulla", use_container_width=True):
+                st.rerun()
+        with col_b:
+            if st.button("🚀 Conferma e Invia", type="primary", use_container_width=True):
+                invia_email(c_singolo["Email"], prezzo_es, template_msg, c_singolo["Nome"])
+                st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_singolo["ID"], "UltimoPrezzo"] = prezzo_es
+                save_data(st.session_state.clienti)
+                st.session_state.show_success = f"✅ Email inviata con successo a {c_singolo['Nome']}!"
+                st.rerun()
+
+    # ==========================================
+    # SEZIONE EMAIL ED ESPANSORE
+    # ==========================================
     st.write("---")
-    st.markdown("### ✉️ Messaggio Email")
     
-    template = st.text_area(
-        "Modifica il messaggio",
-        value=st.session_state.email_template,
-        height=300
-    )
-    st.session_state.email_template = template
+    with st.expander("✉️ Mostra / Modifica Template Email"):
+        st.info("""
+        ⚠️ ATTENZIONE: Modifica solo il contenuto testuale.
+        NON modificare i tag HTML (es. <b>, <br>) o le variabili tra parentesi graffe (es. {prezzo}, {nome}, {data})
+        """)
+        
+        st.session_state.email_template = st.text_area(
+            "Modifica il messaggio",
+            value=st.session_state.email_template,
+            height=300
+        )
 
     if st.button("📧 Invia email a tutti", type="primary"):
-        count = 0
-        for _, c in df.iterrows():
-            if c["Email"] and pd.notna(c["Email"]):
-                prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
-                invia_email(c["Email"], prezzo, template, c["Nome"])
-                st.session_state.clienti.loc[
-                    st.session_state.clienti["ID"] == c["ID"],
-                    "UltimoPrezzo"
-                ] = prezzo
-                count += 1
+        modal_anteprima_tutti(df, prezzo_base, st.session_state.email_template)
 
-        save_data(st.session_state.clienti)
-        st.success(f"Email inviate con successo a {count} clienti!")
-
+    # ==========================================
+    # LISTA CLIENTI RAPIDA
+    # ==========================================
     st.write("---")
-    st.markdown("### 👤 Clienti")
+    st.markdown("### 👤 Invio Singolo Rapido")
 
     search_dash = st.text_input("🔍 Cerca rapida", key="search_dashboard")
     df_view = filtra_clienti(df, search_dash)
@@ -404,7 +475,6 @@ if st.session_state.page == "dashboard":
         <div class="empty-box">
             <div style="font-size:40px;">⛽</div>
             <h3>Nessun cliente trovato</h3>
-            <p style="color:#6b7280;">Aggiungi il primo cliente per iniziare a gestire le offerte.</p>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -434,11 +504,7 @@ if st.session_state.page == "dashboard":
             with col2:
                 if c["Email"] and pd.notna(c["Email"]):
                     if st.button("📧 Email", key=f"mail_{c['ID']}"):
-                        prezzo_send = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
-                        invia_email(c["Email"], prezzo_send, template, c["Nome"])
-                        st.session_state.clienti.loc[st.session_state.clienti["ID"] == c["ID"], "UltimoPrezzo"] = prezzo_send
-                        save_data(st.session_state.clienti)
-                        st.success("Email inviata")
+                        modal_anteprima_singola(c, prezzo_base, st.session_state.email_template)
 
             with col3:
                 if st.button("🗑️ Elimina", key=f"del_{c['ID']}"):
@@ -549,3 +615,23 @@ elif st.session_state.page == "cliente":
         st.success("Cliente salvato con successo!")
         st.session_state.page = "clienti"
         st.rerun()
+
+# =========================================================
+# ⚙️ IMPOSTAZIONI PAGE
+# =========================================================
+elif st.session_state.page == "impostazioni":
+
+    st.markdown('<div class="header-title">⚙️ Impostazioni</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtext">Configura i parametri globali dell\'applicazione</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="client-card">', unsafe_allow_html=True)
+    st.subheader("Preferenze Generali")
+    st.write("Qui puoi inserire futuri controlli per personalizzare ulteriormente il tuo CRM.")
+    
+    opzione_attivata = st.checkbox("Notifiche pop-up attive", value=True)
+    tema = st.selectbox("Seleziona tema applicazione", ["Chiaro (Predefinito)", "Scuro"])
+    
+    st.write("---")
+    st.subheader("Versione Software")
+    st.text("FuelCRM v2.0 - SaaS Edition")
+    st.markdown('</div>', unsafe_allow_html=True)
