@@ -50,6 +50,22 @@ st.markdown("""
     margin-bottom: 20px;
 }
 
+/* ========== STILE TASTI SIDEBAR ========== */
+[data-testid="stSidebar"] .stButton > button {
+    background-color: #1e293b; /* Colore di sfondo del tasto a riposo (blu scuro) */
+    color: #ffffff; /* Colore del testo */
+    border: 1px solid #334155; /* Bordo sottile */
+    border-radius: 10px; /* Angoli arrotondati */
+    transition: all 0.3s ease; /* Effetto morbido al passaggio del mouse */
+}
+
+/* Effetto quando passi il mouse sopra il tasto (HOVER) */
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: #f59e0b; /* Colore di sfondo al passaggio del mouse (arancione SaaS) */
+    color: #000000 !important; /* Colore del testo al passaggio del mouse (nero) */
+    border-color: #f59e0b; /* Cambia anche il bordo */
+}
+
 /* ========== TOP HEADER ========== */
 .header-title {
     font-size: 28px;
