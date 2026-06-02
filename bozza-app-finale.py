@@ -318,9 +318,6 @@ with st.sidebar:
 
     if st.button("➕ Nuovo Cliente", use_container_width=True):
         st.session_state.page = "cliente"
-        
-    if st.button("⚙️ Impostazioni", use_container_width=True):
-        st.session_state.page = "impostazioni"
 
 # =========================
 # CARD COMPONENT
@@ -615,23 +612,3 @@ elif st.session_state.page == "cliente":
         st.success("Cliente salvato con successo!")
         st.session_state.page = "clienti"
         st.rerun()
-
-# =========================================================
-# ⚙️ IMPOSTAZIONI PAGE
-# =========================================================
-elif st.session_state.page == "impostazioni":
-
-    st.markdown('<div class="header-title">⚙️ Impostazioni</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtext">Configura i parametri globali dell\'applicazione</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="client-card">', unsafe_allow_html=True)
-    st.subheader("Preferenze Generali")
-    st.write("Qui puoi inserire futuri controlli per personalizzare ulteriormente il tuo CRM.")
-    
-    opzione_attivata = st.checkbox("Notifiche pop-up attive", value=True)
-    tema = st.selectbox("Seleziona tema applicazione", ["Chiaro (Predefinito)", "Scuro"])
-    
-    st.write("---")
-    st.subheader("Versione Software")
-    st.text("FuelCRM v2.0 - SaaS Edition")
-    st.markdown('</div>', unsafe_allow_html=True)
