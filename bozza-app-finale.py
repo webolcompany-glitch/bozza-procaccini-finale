@@ -1,3 +1,12 @@
+L'errore `SyntaxError: invalid syntax` sulla riga di `elif st.session_state.page == "clienti":` è causato da un **problema di indentazione (spaziature)** nella sezione precedente.
+
+Nello specifico, tutto il blocco della "DASHBOARD" a partire da `with c1:` in poi aveva perso l'indentazione. Questo ha fatto credere a Python che il blocco `if st.session_state.page == "dashboard":` fosse terminato in anticipo, rendendo l'istruzione `elif` successiva orfana (senza un `if` di riferimento) e generando l'errore di sintassi.
+
+Inoltre, nel ciclo della pagina "clienti", mancavano le definizioni per `prezzo`, `col1` e `col2`, che avrebbero generato un `NameError` subito dopo.
+
+Ecco il codice completo e corretto, uguale al tuo ma con le indentazioni e le colonne sistemate per funzionare perfettamente:
+
+```python
 import streamlit as st
 import pandas as pd
 import os
@@ -227,7 +236,6 @@ Enrico Procaccini - 3892159094 &nbsp;&nbsp;&nbsp;
 <br>
 <br>
 <br>
-<!-- FIRMA -->
 <div style="font-family: Verdana, sans-serif; font-size:11px; line-height:1.4; color:#2F5496; margin-top:10px;">
 
 <p><b>Long Life Consulting</b></p>
@@ -266,7 +274,6 @@ Tel: 800 11 33 30
 
 <br>
 
-<!-- DISCLAIMER -->
 <div style="font-family: Verdana, Arial, sans-serif; font-size:11px; color:#000000; line-height:1.4;">
 <i>
 La presente comunicazione, con le informazioni in essa contenute e ogni documento o file allegato, e' strettamente riservata e soggetta alle garanzie che legano i rapporti tra le parti interessate. E' rivolta unicamente alla/e persona/e cui e' indirizzata ed alle altre da questa autorizzata/e a riceverla. Se non siete i destinatari/autorizzati siete avvisati che qualsiasi azione, copia, comunicazione, divulgazione o simili basate sul contenuto di tali informazioni e' vietata e potrebbe essere contro la legge (art. 616 e seguenti C.P., regolamento UE 2016/679). Se avete ricevuto questa comunicazione per errore, vi preghiamo di darne immediata notizia al mittente a mezzo telefono, fax o e-mail e di distruggere il messaggio originale e ogni file allegato senza farne copia alcuna o riprodurne in alcun modo il contenuto. Grazie. Long Life Consulting.
@@ -381,49 +388,49 @@ if st.session_state.page == "dashboard":
 
     c1, c2, c3, c4 = st.columns(4)
 
-with c1:
-    st.markdown(
-        card(
-            "Prezzo Base",
-            f"€ {format_euro(prezzo_base)}",
-            "⛽",
-            "#dbeafe"
-        ),
-        unsafe_allow_html=True
-    )
+    with c1:
+        st.markdown(
+            card(
+                "Prezzo Base",
+                f"€ {format_euro(prezzo_base)}",
+                "⛽",
+                "#dbeafe"
+            ),
+            unsafe_allow_html=True
+        )
 
-with c2:
-    st.markdown(
-        card(
-            "Clienti",
-            clienti_count,
-            "👤",
-            "#e0e7ff"
-        ),
-        unsafe_allow_html=True
-    )
+    with c2:
+        st.markdown(
+            card(
+                "Clienti",
+                clienti_count,
+                "👤",
+                "#e0e7ff"
+            ),
+            unsafe_allow_html=True
+        )
 
-with c3:
-    st.markdown(
-        card(
-            "Margine Medio",
-            f"€ {format_euro(media_margine)}",
-            "📈",
-            "#ffedd5"
-        ),
-        unsafe_allow_html=True
-    )
+    with c3:
+        st.markdown(
+            card(
+                "Margine Medio",
+                f"€ {format_euro(media_margine)}",
+                "📈",
+                "#ffedd5"
+            ),
+            unsafe_allow_html=True
+        )
 
-with c4:
-    st.markdown(
-        card(
-            "Prezzo Medio",
-            f"€ {format_euro(prezzo_medio)}",
-            "💰",
-            "#dcfce7"
-        ),
-        unsafe_allow_html=True
-    )
+    with c4:
+        st.markdown(
+            card(
+                "Prezzo Medio",
+                f"€ {format_euro(prezzo_medio)}",
+                "💰",
+                "#dcfce7"
+            ),
+            unsafe_allow_html=True
+        )
 
     st.markdown("### ✉️ Messaggio Email")
     st.info("""
@@ -542,6 +549,9 @@ elif st.session_state.page == "clienti":
     for _, c in df_view.iterrows():
 
         ultimo_txt = "Nessun invio" if pd.isna(c["UltimoPrezzo"]) else format_euro(c["UltimoPrezzo"]) + " €/L"
+        
+        # AGGIUNTO: mancava il calcolo del prezzo in questa schermata
+        prezzo = calc_price(st.session_state.prezzo_base, c["Margine"], c["Trasporto"])
 
         st.markdown(f"""
         <div class="client-card">
@@ -555,11 +565,15 @@ elif st.session_state.page == "clienti":
 
         </div>
         """, unsafe_allow_html=True)
+        
+        # AGGIUNTO: mancava la definizione delle colonne
+        col1, col2 = st.columns(2)
 
         with col1:
             if st.button("✏️ Modifica", key=f"edit_{c['ID']}"):
                 st.session_state.edit_id = c["ID"]
                 st.session_state.page = "cliente"
+                st.rerun() # Utile per far cambiare istantaneamente la pagina
 
         with col2:
             if st.button("🗑️ Elimina", key=f"del_list_{c['ID']}"):
@@ -633,3 +647,5 @@ elif st.session_state.page == "cliente":
         st.success("Salvato")
         st.session_state.page = "clienti"
         st.rerun()
+
+```
