@@ -11,54 +11,97 @@ supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_KEY"]
 )
+
+# =========================
+# CONFIG
+# =========================
 st.set_page_config(
     page_title="FuelCRM",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# =========================
+# GLOBAL CSS (UI SaaS STYLE)
+# =========================
 st.markdown("""
 <style>
 
-/* MAIN */
-.block-container{
-    padding:1.5rem 2rem;
-    background:#f6f7fb;
+/* ========== MAIN ========== */
+.block-container {
+    padding: 1.5rem 2rem;
+    background-color: #f6f7fb;
 }
 
-/* SIDEBAR */
-[data-testid="stSidebar"]{
-    background:#0f172a;
+/* ========== SIDEBAR ========== */
+[data-testid="stSidebar"] {
+    background-color: #0f172a;
 }
 
-[data-testid="stSidebar"] *{
-    color:white;
+[data-testid="stSidebar"] * {
+    color: white;
+    font-weight: 500;
 }
 
-.header-title{
-    font-size:28px;
-    font-weight:800;
+/* logo/title */
+.sidebar-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 20px;
 }
 
-.subtext{
-    color:#6b7280;
-    margin-top:-8px;
+/* ========== TOP HEADER ========== */
+.header-title {
+    font-size: 28px;
+    font-weight: 800;
 }
 
-.kpi-card{
-    background:white;
-    border-radius:16px;
-    padding:18px;
-    box-shadow:0 6px 20px rgba(0,0,0,.06);
+.subtext {
+    color: #6b7280;
+    margin-top: -8px;
+    margin-bottom: 20px;
 }
 
-.kpi-title{
-    color:#6b7280;
-    font-size:14px;
+/* ========== KPI CARDS ========== */
+.kpi-card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px 18px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
 }
 
-.kpi-value{
-    font-size:22px;
-    font-weight:800;
+.kpi-title {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+/* icon box */
+.icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+/* ========== CLIENT BOX ========== */
+.empty-box {
+    background: white;
+    border-radius: 16px;
+    padding: 60px;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
 }
 
 .client-card{
@@ -71,6 +114,7 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
+
 # =========================
 # 🏢 AZIENDA
 # =========================
@@ -79,8 +123,6 @@ if isinstance(azienda, list):
     azienda = azienda[0]
 
 FILE = f"clienti_{azienda}.csv"
-
-st.markdown(f"## 🏢 Azienda: {azienda.upper()}")
 
 # =========================
 # 📧 EMAIL
@@ -101,7 +143,6 @@ def invia_email(destinatari, prezzo, template, nome=""):
         msg["Subject"] = f"OFFERTA CARBURANTE - {data}"
         msg["From"] = EMAIL_MITTENTE
 
-        # 👉 lista email
         lista_email = [e.strip() for e in destinatari.split(",") if e.strip()]
 
         if not lista_email:
@@ -210,104 +251,47 @@ if "prezzo_base" not in st.session_state:
 
 if "email_template" not in st.session_state:
     st.session_state.email_template = """<div style="font-family: Serif, Arial, sans-serif; font-size:14px; line-height:1.5; color:#000000;">
-
 Gentile cliente,<br><br>
-
 con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata in oggetto.<br><br>
-
 <b>Gasolio per autotrazione = {prezzo}/litro + Iva</b><br><br>
-
 Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.<br><br>
-
 Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.<br><br>
-
 <b>ATTENZIONE!!!</b> GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO<br><br>
-
 Enrico Procaccini - 3892159094 &nbsp;&nbsp;&nbsp;
-<br>
-<br>
-<br>
+<br><br><br>
 <div style="font-family: Verdana, sans-serif; font-size:11px; line-height:1.4; color:#2F5496; margin-top:10px;">
-
 <p><b>Long Life Consulting</b></p>
-
-<p>
-Enrico Procaccini<br>
-<br>
-Corso Italia, 46 – 80011 Acerra (NA)
-</p>
-
-<p>
-Mob: 3892159094<br>
-<br>
-Info: eprocaccini@longlifecons.com
-</p>
-<br>
-<br>
-<br>
-<p>
-Wholeses Fuels - Fuel Cards - Coupons<br>
-<br>
-<b>Agente di</b><br><br>
-
-<img src="https://longlifecons.com/wp-content/Prodotti/Tamoil.svg.png" width="90">
-</p>
-
-<p>
-Via Andrea Costa, 17 20131 Milano, ITALIA
-</p>
-
-<p>
-Tel: 800 11 33 30
-</p>
-
+<p>Enrico Procaccini<br><br>Corso Italia, 46 – 80011 Acerra (NA)</p>
+<p>Mob: 3892159094<br><br>Info: eprocaccini@longlifecons.com</p>
+<br><br><br>
+<p>Wholeses Fuels - Fuel Cards - Coupons<br><br><b>Agente di</b><br><br>
+<img src="https://longlifecons.com/wp-content/Prodotti/Tamoil.svg.png" width="90"></p>
+<p>Via Andrea Costa, 17 20131 Milano, ITALIA</p>
+<p>Tel: 800 11 33 30</p>
 </div>
-
 <br>
-
 <div style="font-family: Verdana, Arial, sans-serif; font-size:11px; color:#000000; line-height:1.4;">
-<i>
-La presente comunicazione, con le informazioni in essa contenute e ogni documento o file allegato, e' strettamente riservata e soggetta alle garanzie che legano i rapporti tra le parti interessate. E' rivolta unicamente alla/e persona/e cui e' indirizzata ed alle altre da questa autorizzata/e a riceverla. Se non siete i destinatari/autorizzati siete avvisati che qualsiasi azione, copia, comunicazione, divulgazione o simili basate sul contenuto di tali informazioni e' vietata e potrebbe essere contro la legge (art. 616 e seguenti C.P., regolamento UE 2016/679). Se avete ricevuto questa comunicazione per errore, vi preghiamo di darne immediata notizia al mittente a mezzo telefono, fax o e-mail e di distruggere il messaggio originale e ogni file allegato senza farne copia alcuna o riprodurne in alcun modo il contenuto. Grazie. Long Life Consulting.
-<br><br>
-This e-mail and its attachments are intended for the addressee(s) only and are confidential and/or may contain legally privileged information. If you have received this message by mistake or are not one of the addressees above, you may take no action based on it, and you may not copy or show it to anyone; please reply to this e-mail and point out the error which has occurred. Thank you. Long Life Consulting.
-</i>
+<i>La presente comunicazione, con le informazioni in essa contenute...</i>
 </div>
-
 </div>
 """
+
 if "wa_template" not in st.session_state:
     st.session_state.wa_template = """Gentile cliente {nome},
-
-con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata di seguito indicata.
-
+con la presente le formuliamo la nostra migliore offerta...
 Data: {data}
-
 Gasolio per autotrazione = {prezzo}/litro + Iva
-
-Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.
-
-Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.
-
-ATTENZIONE!!! GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO
-Enrico Procaccini - 3892159094                
-
-Cordiali saluti
-Long Life Consulting
-Enrico Procaccini
-Corso Italia, 46 – 80011 Acerra (NA)
-Mob: 3892159094
-Info : eprocaccini@longlifecons.com
-Wholeses Fuels - Fuel Cards - Coupons
-Agente di TAMOIL ITALIA S.P.A
 """
+
 df = st.session_state.clienti
 
 # =========================
-# NAV
+# SIDEBAR
 # =========================
 with st.sidebar:
-
-    st.markdown("## ⛽ FuelCRM")
+    st.markdown('<div class="sidebar-title">⛽ FuelCRM</div>', unsafe_allow_html=True)
+    st.markdown(f"🏢 Azienda: **{azienda.upper()}**")
+    st.write("---")
 
     if st.button("📊 Dashboard", use_container_width=True):
         st.session_state.page = "dashboard"
@@ -319,46 +303,28 @@ with st.sidebar:
         st.session_state.page = "cliente"
 
 # =========================
-# CARD
+# CARD COMPONENT
 # =========================
 def card(title, value, icon, color):
     return f"""
     <div class="kpi-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                <div class="kpi-title">{title}</div>
-                <div class="kpi-value">{value}</div>
-            </div>
-
-            <div style="
-                width:42px;
-                height:42px;
-                border-radius:12px;
-                background:{color};
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:18px;">
-                {icon}
-            </div>
-
+        <div>
+            <div class="kpi-title">{title}</div>
+            <div class="kpi-value">{value}</div>
+        </div>
+        <div class="icon-box" style="background:{color};">
+            {icon}
         </div>
     </div>
     """
+
 # =========================================================
 # 📊 DASHBOARD
 # =========================================================
 if st.session_state.page == "dashboard":
 
-    st.markdown(
-    '<div class="header-title">Dashboard</div>',
-    unsafe_allow_html=True
-    )
-
-    st.markdown(
-    '<div class="subtext">Gestione prezzi e invio offerte</div>',
-    unsafe_allow_html=True
-    )
+    st.markdown('<div class="header-title">Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtext">Gestione prezzi e invio offerte</div>', unsafe_allow_html=True)
 
     prezzo_base = st.number_input(
         "⛽ Prezzo base",
@@ -366,12 +332,10 @@ if st.session_state.page == "dashboard":
         step=0.001,
         format="%.3f"
     )
-
     st.session_state.prezzo_base = prezzo_base
 
     clienti_count = len(df)
     media_margine = round(df["Margine"].mean(), 3) if not df.empty else 0
-
     prezzo_medio = (
         calc_price(prezzo_base, df["Margine"].mean(), df["Trasporto"].mean())
         if not df.empty else prezzo_base
@@ -380,261 +344,192 @@ if st.session_state.page == "dashboard":
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-        st.markdown(
-            card(
-                "Prezzo Base",
-                f"€ {format_euro(prezzo_base)}",
-                "⛽",
-                "#dbeafe"
-            ),
-            unsafe_allow_html=True
-        )
-
+        st.markdown(card("Prezzo Base", f"€ {format_euro(prezzo_base)}", "⛽", "#dbeafe"), unsafe_allow_html=True)
     with c2:
-        st.markdown(
-            card(
-                "Clienti",
-                clienti_count,
-                "👤",
-                "#e0e7ff"
-            ),
-            unsafe_allow_html=True
-        )
-
+        st.markdown(card("Clienti", clienti_count, "👤", "#e0e7ff"), unsafe_allow_html=True)
     with c3:
-        st.markdown(
-            card(
-                "Margine Medio",
-                f"€ {format_euro(media_margine)}",
-                "📈",
-                "#ffedd5"
-            ),
-            unsafe_allow_html=True
-        )
-
+        st.markdown(card("Margine Medio", f"€ {format_euro(media_margine)}", "📈", "#ffedd5"), unsafe_allow_html=True)
     with c4:
-        st.markdown(
-            card(
-                "Prezzo Medio",
-                f"€ {format_euro(prezzo_medio)}",
-                "💰",
-                "#dcfce7"
-            ),
-            unsafe_allow_html=True
-        )
+        st.markdown(card("Prezzo Medio", f"€ {format_euro(prezzo_medio)}", "💰", "#dcfce7"), unsafe_allow_html=True)
 
+    st.write("---")
     st.markdown("### ✉️ Messaggio Email")
-    st.info("""
-    ⚠️ ATTENZIONE
-    Modifica solo il contenuto del messaggio.
-    NON modificare:
-    - i tag HTML (es. <b>, <br>, <hr>)
-    - le variabili tra parentesi graffe (es. {prezzo}, {nome}, {data})
     
-    ✔ Puoi cambiare le frasi liberamente
-    ❌ Non cancellare o modificare i simboli tecnici
-    """)
-        
     template = st.text_area(
         "Modifica il messaggio",
         value=st.session_state.email_template,
         height=300
     )
-
     st.session_state.email_template = template
 
-    st.divider()
-
-    if st.button("📧 Invia email a tutti"):
-
+    if st.button("📧 Invia email a tutti", type="primary"):
         count = 0
-
         for _, c in df.iterrows():
-
             if c["Email"] and pd.notna(c["Email"]):
-
                 prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
-
                 invia_email(c["Email"], prezzo, template, c["Nome"])
-
                 st.session_state.clienti.loc[
                     st.session_state.clienti["ID"] == c["ID"],
                     "UltimoPrezzo"
                 ] = prezzo
-
                 count += 1
 
         save_data(st.session_state.clienti)
-        st.success(f"Email inviate: {count}")
+        st.success(f"Email inviate con successo a {count} clienti!")
 
+    st.write("---")
     st.markdown("### 👤 Clienti")
 
-    search_dash = st.text_input("🔍 Cerca", key="search_dashboard")
+    search_dash = st.text_input("🔍 Cerca rapida", key="search_dashboard")
     df_view = filtra_clienti(df, search_dash)
 
-    for _, c in df_view.iterrows():
+    if df_view.empty:
+        st.markdown("""
+        <div class="empty-box">
+            <div style="font-size:40px;">⛽</div>
+            <h3>Nessun cliente trovato</h3>
+            <p style="color:#6b7280;">Aggiungi il primo cliente per iniziare a gestire le offerte.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        for _, c in df_view.iterrows():
+            prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+            ultimo = c["UltimoPrezzo"]
+            ultimo_txt = "Nessun invio" if pd.isna(ultimo) else format_euro(ultimo) + " €/L"
 
-        prezzo = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+            st.markdown(f"""
+            ### 👤 {c['Nome']}
+            📄 P.IVA: {c['PIVA']}  
+            💰 Oggi: {format_euro(prezzo)} €/L  
+            📌 Ultimo: **{ultimo_txt}**
+            """)
 
-        ultimo = c["UltimoPrezzo"]
-        ultimo_txt = "Nessun invio" if pd.isna(ultimo) else format_euro(ultimo) + " €/L"
+            col1, col2, col3 = st.columns(3)
 
-        st.markdown(f"""
-        ### 👤 {c['Nome']}
-        📄 P.IVA: {c['PIVA']}  
-        💰 Oggi: {format_euro(prezzo)} €/L  
-        📌 Ultimo: **{ultimo_txt}**
-        """)
+            with col1:
+                import urllib.parse
+                tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
+                data = datetime.now().strftime("%d/%m/%Y")
+                msg = st.session_state.wa_template.replace("{prezzo}", format_euro(prezzo)).replace("{nome}", c["Nome"]).replace("{data}", data)
+                msg_encoded = urllib.parse.quote(msg)
+                wa = f"https://wa.me/{tel}?text={msg_encoded}"
+                st.link_button("📲 WhatsApp", wa)
 
-        col1, col2, col3 = st.columns(3)
+            with col2:
+                if c["Email"] and pd.notna(c["Email"]):
+                    if st.button("📧 Email", key=f"mail_{c['ID']}"):
+                        prezzo_send = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
+                        invia_email(c["Email"], prezzo_send, template, c["Nome"])
+                        st.session_state.clienti.loc[st.session_state.clienti["ID"] == c["ID"], "UltimoPrezzo"] = prezzo_send
+                        save_data(st.session_state.clienti)
+                        st.success("Email inviata")
 
-        with col1:
-            import urllib.parse
-
-            tel = str(c["Telefono"]).replace("+", "").replace(" ", "")
-            data = datetime.now().strftime("%d/%m/%Y")
-
-            msg = st.session_state.wa_template \
-                .replace("{prezzo}", format_euro(prezzo)) \
-                .replace("{nome}", c["Nome"]) \
-                .replace("{data}", data)
-
-            msg_encoded = urllib.parse.quote(msg)
-
-            wa = f"https://wa.me/{tel}?text={msg_encoded}"
-
-            st.link_button("📲 WhatsApp", wa)
-
-        with col2:
-            if c["Email"] and pd.notna(c["Email"]):
-                if st.button("📧 Email", key=f"mail_{c['ID']}"):
-
-                    prezzo_send = calc_price(prezzo_base, c["Margine"], c["Trasporto"])
-
-                    invia_email(c["Email"], prezzo_send, template, c["Nome"])
-
-                    st.session_state.clienti.loc[
-                        st.session_state.clienti["ID"] == c["ID"],
-                        "UltimoPrezzo"
-                    ] = prezzo_send
-
+            with col3:
+                if st.button("🗑️ Elimina", key=f"del_{c['ID']}"):
+                    st.session_state.clienti = df[df["ID"] != c["ID"]]
                     save_data(st.session_state.clienti)
-                    st.success("Email inviata")
+                    st.rerun()
 
-        with col3:
-            if st.button("🗑️ Elimina", key=f"del_{c['ID']}"):
-                st.session_state.clienti = df[df["ID"] != c["ID"]]
-                save_data(st.session_state.clienti)
-                st.rerun()
+            st.write("---")
 
 # =========================================================
 # 👤 CLIENTI PAGE
 # =========================================================
 elif st.session_state.page == "clienti":
 
-    st.markdown("## 👤 Clienti")
+    st.markdown('<div class="header-title">👤 Gestione Clienti</div>', unsafe_allow_html=True)
 
-    search = st.text_input("🔍 Cerca cliente")
+    search = st.text_input("🔍 Cerca cliente per Nome, P.IVA o Telefono")
     df_view = filtra_clienti(df, search)
 
-    for _, c in df_view.iterrows():
-
-        ultimo_txt = "Nessun invio" if pd.isna(c["UltimoPrezzo"]) else format_euro(c["UltimoPrezzo"]) + " €/L"
-        
-        # AGGIUNTO: mancava il calcolo del prezzo in questa schermata
-        prezzo = calc_price(st.session_state.prezzo_base, c["Margine"], c["Trasporto"])
-
-        st.markdown(f"""
-        <div class="client-card">
-
-        <h4>👤 {c['Nome']}</h4>
-
-        📄 P.IVA: {c['PIVA']}<br>
-        📞 {c['Telefono']}<br>
-        💰 Prezzo Oggi: {format_euro(prezzo)} €/L<br>
-        📌 Ultimo Invio: {ultimo_txt}
-
+    if df_view.empty:
+         st.markdown("""
+        <div class="empty-box">
+            <div style="font-size:40px;">👥</div>
+            <h3>Lista vuota</h3>
+            <p style="color:#6b7280;">Non ci sono clienti che corrispondono alla ricerca.</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # AGGIUNTO: mancava la definizione delle colonne
-        col1, col2 = st.columns(2)
+    else:
+        for _, c in df_view.iterrows():
+            ultimo_txt = "Nessun invio" if pd.isna(c["UltimoPrezzo"]) else format_euro(c["UltimoPrezzo"]) + " €/L"
+            prezzo = calc_price(st.session_state.prezzo_base, c["Margine"], c["Trasporto"])
 
-        with col1:
-            if st.button("✏️ Modifica", key=f"edit_{c['ID']}"):
-                st.session_state.edit_id = c["ID"]
-                st.session_state.page = "cliente"
-                st.rerun() # Utile per far cambiare istantaneamente la pagina
+            st.markdown(f"""
+            <div class="client-card">
+            <h4 style="margin-top:0;">👤 {c['Nome']}</h4>
+            📄 P.IVA: {c['PIVA']}<br>
+            📞 {c['Telefono']}<br>
+            💰 Prezzo Oggi: <b>{format_euro(prezzo)} €/L</b><br>
+            📌 Ultimo Invio: <span style="color:#6b7280;">{ultimo_txt}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
 
-        with col2:
-            if st.button("🗑️ Elimina", key=f"del_list_{c['ID']}"):
-                st.session_state.clienti = df[df["ID"] != c["ID"]]
-                save_data(st.session_state.clienti)
-                st.rerun()
+            with col1:
+                if st.button("✏️ Modifica", key=f"edit_{c['ID']}"):
+                    st.session_state.edit_id = c["ID"]
+                    st.session_state.page = "cliente"
+                    st.rerun() 
 
-        st.divider()
+            with col2:
+                if st.button("🗑️ Elimina", key=f"del_list_{c['ID']}"):
+                    st.session_state.clienti = df[df["ID"] != c["ID"]]
+                    save_data(st.session_state.clienti)
+                    st.rerun()
 
 # =========================================================
 # ➕ CLIENTE PAGE
 # =========================================================
 elif st.session_state.page == "cliente":
 
-    st.markdown("## ➕ Cliente")
-
     editing = st.session_state.edit_id is not None
+    titolo_pagina = "Modifica Cliente" if editing else "Nuovo Cliente"
+    
+    st.markdown(f'<div class="header-title">{"✏️" if editing else "➕"} {titolo_pagina}</div>', unsafe_allow_html=True)
 
     if editing:
         c = df[df["ID"] == st.session_state.edit_id].iloc[0]
     else:
         c = {"Nome":"","PIVA":"","Telefono":"","Email":"","Margine":0.0,"Trasporto":0.0}
 
-    nome = st.text_input("Nome", value=c["Nome"])
-    piva = st.text_input("P.IVA", value=c["PIVA"])
-    tel = st.text_input("Telefono", value=c["Telefono"])
-    email = st.text_input(
-    "Email",
-    value=c["Email"],
-    placeholder="es: principale@mail.com, cc@mail.com"
-    )
+    with st.container():
+        st.markdown('<div class="client-card">', unsafe_allow_html=True)
+        nome = st.text_input("Nome Ragione Sociale", value=c["Nome"])
+        piva = st.text_input("Partita IVA", value=c["PIVA"])
+        tel = st.text_input("Telefono", value=c["Telefono"])
+        email = st.text_input("Email", value=c["Email"], placeholder="es: principale@mail.com, cc@mail.com")
+        st.caption("ℹ️ Scrivi prima l'email principale. Le successive separate da virgola saranno usate come CC (conoscenza).")
+        
+        col_m, col_t = st.columns(2)
+        with col_m:
+            margine = st.number_input("Margine (€/L)", value=float(c["Margine"]), step=0.001, format="%.3f")
+        with col_t:
+            trasporto = st.number_input("Trasporto (€/L)", value=float(c["Trasporto"]), step=0.001, format="%.3f")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    st.caption(
-    "ℹ️ Scrivi prima l'email principale. "
-    "Le successive separate da virgola saranno usate come CC (conoscenza)."
-    )
-    margine = st.number_input("Margine", value=float(c["Margine"]), step=0.001, format="%.3f")
-    trasporto = st.number_input("Trasporto", value=float(c["Trasporto"]), step=0.001, format="%.3f")
-
-    if st.button("💾 Salva"):
+    if st.button("💾 Salva Cliente", type="primary"):
 
         if editing:
             idx = st.session_state.clienti["ID"] == st.session_state.edit_id
-
             st.session_state.clienti.loc[idx, "Nome"] = nome
             st.session_state.clienti.loc[idx, "PIVA"] = piva
             st.session_state.clienti.loc[idx, "Telefono"] = tel
             st.session_state.clienti.loc[idx, "Email"] = email
             st.session_state.clienti.loc[idx, "Margine"] = margine
             st.session_state.clienti.loc[idx, "Trasporto"] = trasporto
-
             st.session_state.edit_id = None
-
         else:
             new_id = 1 if df.empty else int(df["ID"].max()) + 1
-
             new = pd.DataFrame([{
-                "ID": new_id,
-                "Nome": nome,
-                "PIVA": piva,
-                "Telefono": tel,
-                "Email": email,
-                "Margine": margine,
-                "Trasporto": trasporto,
-                "UltimoPrezzo": None
+                "ID": new_id, "Nome": nome, "PIVA": piva, 
+                "Telefono": tel, "Email": email, "Margine": margine, 
+                "Trasporto": trasporto, "UltimoPrezzo": None
             }])
-
             st.session_state.clienti = pd.concat([df, new], ignore_index=True)
 
         save_data(st.session_state.clienti)
-        st.success("Salvato")
+        st.success("Cliente salvato con successo!")
         st.session_state.page = "clienti"
         st.rerun()
