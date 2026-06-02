@@ -160,7 +160,10 @@ def load_data():
     return df
 
 def save_data(df):
-    records = df.rename(columns={
+    # 🛡️ FIX: Trasforma i valori NaN in None per non far bloccare Supabase
+    df_clean = df.where(pd.notnull(df), None)
+    
+    records = df_clean.rename(columns={
         "ID":"id", "Nome":"nome", "PIVA":"piva", "Telefono":"telefono",
         "Email":"email", "Margine":"margine", "Trasporto":"trasporto",
         "UltimoPrezzo":"ultimo_prezzo", "Base":"base", "Prodotti":"prodotti"
@@ -321,7 +324,8 @@ if st.session_state.page == "dashboard":
                             html_off = genera_testo_offerte(c_all, dict_prezzi, formato="html")
                             invia_email(c_all["Email"], html_off, template_msg, c_all["Nome"])
                             
-                            st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_all["ID"], "UltimoPrezzo"] = "Offerta Multipla Inviata"
+                            # 🛡️ FIX: Salviamo -1.0 come indicatore numerico al posto della stringa
+                            st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_all["ID"], "UltimoPrezzo"] = -1.0
                             count += 1
                     save_data(st.session_state.clienti)
                     st.session_state.show_success = f"✅ Email inviate con successo a {count} clienti!"
@@ -345,7 +349,9 @@ if st.session_state.page == "dashboard":
         with col_b:
             if st.button("🚀 Conferma e Invia", type="primary", use_container_width=True):
                 invia_email(c_singolo["Email"], html_offerte, template_msg, c_singolo["Nome"])
-                st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_singolo["ID"], "UltimoPrezzo"] = "Offerta Multipla Inviata"
+                
+                # 🛡️ FIX: Salviamo -1.0 come indicatore numerico al posto della stringa
+                st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_singolo["ID"], "UltimoPrezzo"] = -1.0
                 save_data(st.session_state.clienti)
                 st.session_state.show_success = f"✅ Email inviata con successo a {c_singolo['Nome']}!"
                 st.rerun()
@@ -379,7 +385,15 @@ if st.session_state.page == "dashboard":
         st.markdown('<div class="empty-box"><div style="font-size:40px;">⛽</div><h3>Nessun cliente trovato</h3></div>', unsafe_allow_html=True)
     else:
         for _, c in df_view.iterrows():
-            ultimo_txt = c["UltimoPrezzo"] if pd.notna(c["UltimoPrezzo"]) else "Nessun invio"
+            # 🛡️ FIX: Traduce il numero -1.0 nella stringa voluta per l'UI
+            ultimo_val = c.get("UltimoPrezzo")
+            if pd.isna(ultimo_val) or ultimo_val is None:
+                ultimo_txt = "Nessun invio"
+            elif ultimo_val == -1.0:
+                ultimo_txt = "Offerta Inviata"
+            else:
+                ultimo_txt = f"{format_euro(ultimo_val)} €/L"
+
             prod_lista = c.get("Prodotti", "")
 
             st.markdown(f"""
@@ -431,7 +445,14 @@ elif st.session_state.page == "clienti":
          st.markdown('<div class="empty-box"><div style="font-size:40px;">👥</div><h3>Lista vuota</h3></div>', unsafe_allow_html=True)
     else:
         for _, c in df_view.iterrows():
-            ultimo_txt = c["UltimoPrezzo"] if pd.notna(c["UltimoPrezzo"]) else "Nessun invio"
+            # 🛡️ FIX: Traduce il numero -1.0 nella stringa voluta per l'UI
+            ultimo_val = c.get("UltimoPrezzo")
+            if pd.isna(ultimo_val) or ultimo_val is None:
+                ultimo_txt = "Nessun invio"
+            elif ultimo_val == -1.0:
+                ultimo_txt = "Offerta Inviata"
+            else:
+                ultimo_txt = f"{format_euro(ultimo_val)} €/L"
 
             st.markdown(f"""
             <div class="client-card">
