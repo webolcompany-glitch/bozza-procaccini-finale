@@ -4,7 +4,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client
 
 # =========================
@@ -58,21 +58,40 @@ if isinstance(azienda, list):
     azienda = azienda[0]
 
 # =========================
-# 📧 EMAIL & UTILS
+# 📧 EMAIL, DATA & UTILS
 # =========================
 EMAIL_MITTENTE = st.secrets["EMAIL_MITTENTE"]
 PASSWORD_APP = st.secrets["PASSWORD_APP"]
 
+def get_data_domani():
+    """Calcola la data di domani formattata in italiano saltando il weekend."""
+    oggi = datetime.now()
+    
+    # 4 = Venerdì, 5 = Sabato, 6 = Domenica
+    if oggi.weekday() == 4:
+        # Se oggi è venerdì, aggiungi 3 giorni per andare a lunedì
+        domani = oggi + timedelta(days=3)
+    elif oggi.weekday() == 5:
+        # Se oggi è sabato, aggiungi 2 giorni per andare a lunedì
+        domani = oggi + timedelta(days=2)
+    else:
+        # Altrimenti aggiungi 1 giorno normale
+        domani = oggi + timedelta(days=1)
+        
+    giorni = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+    nome_giorno = giorni[domani.weekday()]
+    return f"{nome_giorno} {domani.strftime('%d/%m/%Y')}"
+
 def invia_email(destinatari, elenco_offerte_html, template, nome=""):
     try:
-        data = datetime.now().strftime("%d/%m/%Y")
+        data = get_data_domani()
         testo = template \
             .replace("{elenco_offerte}", elenco_offerte_html) \
             .replace("{nome}", nome) \
             .replace("{data}", data)
 
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"OFFERTA CARBURANTE - {data}"
+        msg["Subject"] = f"OFFERTA CARBURANTE - PREZZI VALIDI PER {data}"
         msg["From"] = EMAIL_MITTENTE
 
         lista_email = [e.strip() for e in destinatari.split(",") if e.strip()]
@@ -112,7 +131,7 @@ def genera_testo_offerte(cliente, prezzi_globali, formato="html"):
         if formato == "html":
             righe.append(f"<b>{p}</b>: {format_euro(p_fin)} €/L + Iva")
         else: # WhatsApp
-            righe.append(f"{p}: {format_euro(p_fin)} €/L + Iva")
+            righe.append(f"{p} = {format_euro(p_fin)}/litro + Iva")
             
     separator = "<br><br>" if formato == "html" else "\n\n"
     return separator.join(righe)
@@ -160,7 +179,6 @@ def load_data():
     return df
 
 def save_data(df):
-    # 🛡️ FIX: Trasforma i valori NaN in None per non far bloccare Supabase
     df_clean = df.where(pd.notnull(df), None)
     
     records = df_clean.rename(columns={
@@ -200,7 +218,11 @@ if "email_template" not in st.session_state:
     st.session_state.email_template = """<div style="font-family: Serif, Arial, sans-serif; font-size:14px; line-height:1.5; color:#000000;">
 Gentile cliente,<br><br>
 con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata in oggetto:<br><br>
+
+<b>OFFERTA CARBURANTE - PREZZI VALIDI PER {data}</b><br><br>
+
 {elenco_offerte}<br><br>
+
 Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.<br><br>
 Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.<br><br>
 <b>ATTENZIONE!!!</b> GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO<br><br>
@@ -218,21 +240,29 @@ Enrico Procaccini - 3892159094 &nbsp;&nbsp;&nbsp;
 </div>
 <br>
 <div style="font-family: Verdana, Arial, sans-serif; font-size:11px; color:#000000; line-height:1.4;">
-<i>La presente comunicazione, con le informazioni in essa contenute...</i>
+<i>La presente comunicazione, con le informazioni in essa contenute e ogni documento o file allegato, e' strettamente riservata e soggetta alle garanzie che legano i rapporti tra le parti interessate. E' rivolta unicamente alla/e persona/e cui e' indirizzata ed alle altre da questa autorizzata/e a riceverla. Se non siete i destinatari/autorizzati siete avvisati che qualsiasi azione, copia, comunicazione, divulgazione o simili basate sul contenuto di tali informazioni e' vietata e potrebbe essere contro la legge (art. 616 e seguenti C.P., regolamento UE 2016/679). Se avete ricevuto questa comunicazione per errore, vi preghiamo di darne immediata notizia al mittente a mezzo telefono, fax o e-mail e di distruggere il messaggio originale e ogni file allegato senza farne copia alcuna o riprodurne in alcun modo il contenuto. Grazie. Long Life Consulting.</i>
 </div>
 </div>
 """
 
+# ==========================================
+# 🔄 AGGIORNATO: TEMPLATE WHATSAPP
+# ==========================================
 if "wa_template" not in st.session_state:
     st.session_state.wa_template = """Gentile cliente {nome},
-con la presente le formuliamo la nostra migliore offerta:
+
+con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata di seguito indicata.
+
 Data: {data}
 
 {elenco_offerte}
 
-Cordiali saluti,
-Enrico Procaccini - 3892159094
-"""
+Per via delle attuali fluttuazioni di mercato i prezzi in elenco avranno una validità giornaliera.
+
+Le consegne dei prodotti avverranno entro il giorno dopo alla data di effettuazione dell'ordine.
+
+ATTENZIONE!!! GLI ORDINI DOVRANNO PERVENIRE ENTRO LE ORE 14:00 RISPONDENDO ALLA PRESENTE OPPURE CHIAMANDO AL NUMERO DI TELEFONO
+Enrico Procaccini - 3892159094"""
 
 df = st.session_state.clienti
 
@@ -308,7 +338,7 @@ if st.session_state.page == "dashboard":
                 
         if preview_c is not None:
             html_offerte = genera_testo_offerte(preview_c, dict_prezzi, formato="html")
-            data_es = datetime.now().strftime("%d/%m/%Y")
+            data_es = get_data_domani()
             testo_es = template_msg.replace("{elenco_offerte}", html_offerte).replace("{nome}", preview_c["Nome"]).replace("{data}", data_es)
             
             st.markdown(f'<div style="background:white; padding:20px; border-radius:10px; border:1px solid #e2e8f0; max-height: 350px; overflow-y: auto; font-size: 14px;">{testo_es}</div>', unsafe_allow_html=True)
@@ -324,7 +354,6 @@ if st.session_state.page == "dashboard":
                             html_off = genera_testo_offerte(c_all, dict_prezzi, formato="html")
                             invia_email(c_all["Email"], html_off, template_msg, c_all["Nome"])
                             
-                            # 🛡️ FIX: Salviamo -1.0 come indicatore numerico al posto della stringa
                             st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_all["ID"], "UltimoPrezzo"] = -1.0
                             count += 1
                     save_data(st.session_state.clienti)
@@ -338,7 +367,7 @@ if st.session_state.page == "dashboard":
         st.write(f"Invia a: **{c_singolo.get('Nome', 'Sconosciuto')}** ({c_singolo.get('Email', '')})")
         
         html_offerte = genera_testo_offerte(c_singolo, dict_prezzi, formato="html")
-        data_es = datetime.now().strftime("%d/%m/%Y")
+        data_es = get_data_domani()
         testo_es = template_msg.replace("{elenco_offerte}", html_offerte).replace("{nome}", c_singolo.get("Nome", "")).replace("{data}", data_es)
         
         st.markdown(f'<div style="background:white; padding:20px; border-radius:10px; border:1px solid #e2e8f0; max-height: 350px; overflow-y: auto; font-size: 14px;">{testo_es}</div>', unsafe_allow_html=True)
@@ -350,7 +379,6 @@ if st.session_state.page == "dashboard":
             if st.button("🚀 Conferma e Invia", type="primary", use_container_width=True):
                 invia_email(c_singolo["Email"], html_offerte, template_msg, c_singolo["Nome"])
                 
-                # 🛡️ FIX: Salviamo -1.0 come indicatore numerico al posto della stringa
                 st.session_state.clienti.loc[st.session_state.clienti["ID"] == c_singolo["ID"], "UltimoPrezzo"] = -1.0
                 save_data(st.session_state.clienti)
                 st.session_state.show_success = f"✅ Email inviata con successo a {c_singolo['Nome']}!"
@@ -385,7 +413,6 @@ if st.session_state.page == "dashboard":
         st.markdown('<div class="empty-box"><div style="font-size:40px;">⛽</div><h3>Nessun cliente trovato</h3></div>', unsafe_allow_html=True)
     else:
         for _, c in df_view.iterrows():
-            # 🛡️ FIX: Traduce il numero -1.0 nella stringa voluta per l'UI
             ultimo_val = c.get("UltimoPrezzo")
             if pd.isna(ultimo_val) or ultimo_val is None:
                 ultimo_txt = "Nessun invio"
@@ -410,7 +437,7 @@ if st.session_state.page == "dashboard":
             with col1:
                 import urllib.parse
                 tel = str(c.get("Telefono", "")).replace("+", "").replace(" ", "")
-                data = datetime.now().strftime("%d/%m/%Y")
+                data = get_data_domani()
                 wa_offerte = genera_testo_offerte(c, st.session_state.prezzi_base, formato="testo")
                 msg = st.session_state.wa_template.replace("{elenco_offerte}", wa_offerte).replace("{nome}", c.get("Nome", "")).replace("{data}", data)
                 msg_encoded = urllib.parse.quote(msg)
@@ -445,7 +472,6 @@ elif st.session_state.page == "clienti":
          st.markdown('<div class="empty-box"><div style="font-size:40px;">👥</div><h3>Lista vuota</h3></div>', unsafe_allow_html=True)
     else:
         for _, c in df_view.iterrows():
-            # 🛡️ FIX: Traduce il numero -1.0 nella stringa voluta per l'UI
             ultimo_val = c.get("UltimoPrezzo")
             if pd.isna(ultimo_val) or ultimo_val is None:
                 ultimo_txt = "Nessun invio"
