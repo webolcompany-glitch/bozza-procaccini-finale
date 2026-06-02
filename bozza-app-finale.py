@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from supabase import create_client
+import math  # 🆕 AGGIUNTO per pulire i NaN in modo sicuro
 
 # =========================
 # IMPOSTAZIONI GLOBALI
@@ -67,15 +68,11 @@ def get_data_domani():
     """Calcola la data di domani formattata in italiano saltando il weekend."""
     oggi = datetime.now()
     
-    # 4 = Venerdì, 5 = Sabato, 6 = Domenica
-    if oggi.weekday() == 4:
-        # Se oggi è venerdì, aggiungi 3 giorni per andare a lunedì
+    if oggi.weekday() == 4: # Venerdì
         domani = oggi + timedelta(days=3)
-    elif oggi.weekday() == 5:
-        # Se oggi è sabato, aggiungi 2 giorni per andare a lunedì
+    elif oggi.weekday() == 5: # Sabato
         domani = oggi + timedelta(days=2)
     else:
-        # Altrimenti aggiungi 1 giorno normale
         domani = oggi + timedelta(days=1)
         
     giorni = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
@@ -151,7 +148,7 @@ def filtra_clienti(df, search, base_filter="Tutte"):
     return res
 
 # =========================
-# 💾 DATA
+# 💾 DATA & SAVE FIX
 # =========================
 def load_data():
     res = supabase.table("clienti").select("*").execute()
@@ -179,13 +176,24 @@ def load_data():
     return df
 
 def save_data(df):
-    df_clean = df.where(pd.notnull(df), None)
-    
-    records = df_clean.rename(columns={
+    # 🛡️ FIX DEFINITIVO: Conversione solida verso dizionario pulito
+    records = df.rename(columns={
         "ID":"id", "Nome":"nome", "PIVA":"piva", "Telefono":"telefono",
         "Email":"email", "Margine":"margine", "Trasporto":"trasporto",
         "UltimoPrezzo":"ultimo_prezzo", "Base":"base", "Prodotti":"prodotti"
     }).to_dict(orient="records")
+
+    # Passiamo record per record per estirpare la malattia dei NaN
+    for r in records:
+        for k, v in r.items():
+            if isinstance(v, float) and math.isnan(v):
+                r[k] = None
+            elif pd.isna(v):
+                r[k] = None
+                
+        # Assicuriamoci che l'ID sia un intero pulito
+        if r.get("id") is not None:
+            r["id"] = int(r["id"])
 
     if records:
         supabase.table("clienti").upsert(records).execute()
@@ -245,11 +253,7 @@ Enrico Procaccini - 3892159094 &nbsp;&nbsp;&nbsp;
 </div>
 """
 
-# ==========================================
-# 🔄 AGGIORNATO: TEMPLATE WHATSAPP
-# ==========================================
-if "wa_template" not in st.session_state:
-    st.session_state.wa_template = """Gentile cliente {nome},
+st.session_state.wa_template = """Gentile cliente {nome},
 
 con la presente le formuliamo la nostra migliore offerta sui prodotti utilizzati dalla Vostra azienda ''ipotizzando'' un presunto scarico per la giornata di seguito indicata.
 
